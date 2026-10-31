@@ -1,0 +1,88 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #0b1320;
+  --bg-secondary: #0f1a2e;
+  --surface: rgba(255, 255, 255, 0.06);
+  --surface-strong: rgba(255, 255, 255, 0.10);
+  --surface-muted: #141f35;
+  --ink: #e8edf5;
+  --ink-2: #c5d3e8;
+  --muted: #8899b4;
+  --subtle: #5a6e8a;
+  --border: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(165, 199, 242, 0.30);
+  --accent: #3b82f6;
+  --accent-hover: #60a5fa;
+  --success: #26d07c;
+  --success-dim: rgba(38, 208, 124, 0.15);
+  --danger: #f04e61;
+  --danger-dim: rgba(240, 78, 97, 0.15);
+  --buy: #26d07c;
+  --buy-dim: rgba(38, 208, 124, 0.12);
+  --sell: #f04e61;
+  --sell-dim: rgba(240, 78, 97, 0.12);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: 'DM Sans', sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  min-height: 100dvh;
+  overflow-x: hidden;
+}
+
+.display {
+  font-family: 'Space Grotesk', sans-serif;
+  letter-spacing: -0.03em;
+}
+
+.mono {
+  font-family: 'JetBrains Mono', Menlo, monospace;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 2px; }
+
+/* Tab base */
+.tab-base {
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+  background: none;
+  border-top: none;
+  border-left: none;
+  border-right: none;
+  font-family: 'DM Sans', sans-serif;
+}
+.tab-base:hover { color: var(--ink-2); }
+.tab-active {
+  color: var(--ink);
+  border-bottom-color: var(--accent);
+}
+
+/* Number pulse animations */
+@keyframes pulse-green {
+  0% { color: var(--success); }
+  100% { color: inherit; }
+}
+@keyframes pulse-red {
+  0% { color: var(--danger); }
+  100% { color: inherit; }
+}
+.pulse-green { animation: pulse-green 0.5s ease-out; }
+.pulse-red { animation: pulse-red 0.5s ease-out; }
