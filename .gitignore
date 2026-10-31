@@ -1,0 +1,13 @@
+node_modules/
+dist/
+.env
+.env.*
+!.env.example
+contracts/out/
+contracts/cache/
+contracts/contract-metadata/*.json
+!contracts/contract-metadata/.gitkeep
+.circle/
+*.log
+.DS_Store
+Thumbs.db
