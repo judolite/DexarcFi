@@ -13,19 +13,8 @@ import StakingPage from './components/StakingPage'
 import GatewayPage from './components/GatewayPage'
 import MarketsPage from './components/MarketsPage'
 import PortfolioPage from './components/PortfolioPage'
+import LeaderboardPage from './components/LeaderboardPage'
 
-// Placeholder for portfolio/markets/leaderboard
-function ComingSoonPage({ title }: { title: string }) {
-  return (
-    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 12, background: 'var(--bg)' }}>
-      <div style={{ fontSize: 32 }}>📊</div>
-      <h2 className="display" style={{ margin: 0, fontSize: 24, fontWeight: 700, color: 'var(--ink)', letterSpacing: '-0.03em' }}>
-        {title}
-      </h2>
-      <p style={{ margin: 0, fontSize: 14, color: 'var(--muted)' }}>Coming soon — check back later.</p>
-    </div>
-  )
-}
 
 export default function App() {
   const { markets, activeSymbol, activeMarket, orderBook, trades, candles, switchMarket } = useMarketData()
@@ -91,7 +80,7 @@ export default function App() {
       {activeTab === 'Staking' && <StakingPage />}
       {activeTab === 'Portfolio' && <PortfolioPage />}
       {activeTab === 'Markets' && <MarketsPage />}
-      {activeTab === 'Leaderboard' && <ComingSoonPage title="Leaderboard" />}
+      {activeTab === 'Leaderboard' && <LeaderboardPage />}
     </div>
   )
 }
