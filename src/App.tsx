@@ -12,6 +12,7 @@ import VaultsPage from './components/VaultsPage'
 import StakingPage from './components/StakingPage'
 import GatewayPage from './components/GatewayPage'
 import MarketsPage from './components/MarketsPage'
+import PortfolioPage from './components/PortfolioPage'
 
 // Placeholder for portfolio/markets/leaderboard
 function ComingSoonPage({ title }: { title: string }) {
@@ -88,7 +89,7 @@ export default function App() {
       {activeTab === 'Earn' && <EarnPage />}
       {activeTab === 'Vaults' && <VaultsPage />}
       {activeTab === 'Staking' && <StakingPage />}
-      {activeTab === 'Portfolio' && <ComingSoonPage title="Portfolio" />}
+      {activeTab === 'Portfolio' && <PortfolioPage />}
       {activeTab === 'Markets' && <MarketsPage />}
       {activeTab === 'Leaderboard' && <ComingSoonPage title="Leaderboard" />}
     </div>
