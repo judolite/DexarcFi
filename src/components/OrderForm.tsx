@@ -1,11 +1,11 @@
 import { useState } from 'react'
-import { useAccount, useReadContract } from 'wagmi'
+import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt, useSwitchChain } from 'wagmi'
 import { erc20Abi } from 'viem'
 import { ConnectKitButton } from 'connectkit'
-import { getUsdc } from '@/onchain-facts'
-import { Amount, usdcDecimalsFor } from '@/onchain-money'
+import { getUsdc, buildTxExplorerUrl } from '@/onchain-facts'
+import { Amount, usdcDecimalsFor, parseAmount } from '@/onchain-money'
 import type { Market } from '../hooks/useMarketData'
-import { Info } from 'lucide-react'
+import { Info, ExternalLink } from 'lucide-react'
 import { toast } from 'sonner'
 
 const ARC_TESTNET_ID = 5042002
@@ -19,8 +19,13 @@ interface Props {
 const LEVERAGES = [1, 2, 3, 5, 10, 20, 50]
 const ORDER_TYPES = ['Market', 'Limit', 'Stop Market', 'Stop Limit']
 
+// Escrow address for margin — receives USDC on Arc Testnet when an order is placed.
+// Replace with your deployed perp engine contract address before going to mainnet.
+const MARGIN_ESCROW = '0x0000000000000000000000000000000000000001' as const
+
 export default function OrderForm({ market, price, onPriceChange }: Props) {
-  const { address, isConnected } = useAccount()
+  const { address, isConnected, chainId } = useAccount()
+  const { switchChain } = useSwitchChain()
   const [side, setSide] = useState<'buy' | 'sell'>('buy')
   const [orderType, setOrderType] = useState('Market')
   const [leverage, setLeverage] = useState(10)
@@ -31,8 +36,9 @@ export default function OrderForm({ market, price, onPriceChange }: Props) {
   const [slPrice, setSlPrice] = useState('')
 
   const usdcFact = getUsdc(ARC_TESTNET_ID)
+  const isWrongChain = isConnected && chainId !== ARC_TESTNET_ID
 
-  const { data: rawBalance } = useReadContract({
+  const { data: rawBalance, refetch: refetchBalance } = useReadContract({
     address: usdcFact?.address as `0x${string}`,
     abi: erc20Abi,
     functionName: 'balanceOf',
@@ -49,17 +55,48 @@ export default function OrderForm({ market, price, onPriceChange }: Props) {
   const notional = sizeUsdNum * leverage
   const marginRequired = sizeUsdNum > 0 ? sizeUsdNum : null
 
-  const handleSubmit = () => {
-    if (!isConnected) return
-    if (!sizeUsdNum || sizeUsdNum <= 0) {
-      toast.error('Enter a position size')
-      return
-    }
+  const { writeContract, data: txHash, isPending: isSubmitting } = useWriteContract()
+  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({ hash: txHash })
+
+  // Show explorer link once confirmed
+  if (isConfirmed && txHash) {
+    const explorerUrl = buildTxExplorerUrl(ARC_TESTNET_ID, txHash)
     toast.success(
       `${side === 'buy' ? 'Long' : 'Short'} ${market.symbol} — ${leverage}x · $${sizeUsdNum.toFixed(2)} margin`,
-      { description: 'Order placed (demo mode — no real funds moved)' }
+      {
+        description: (
+          <a href={explorerUrl} target="_blank" rel="noopener noreferrer"
+            style={{ color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: 4 }}>
+            View on Arc Explorer <ExternalLink size={12} />
+          </a>
+        ),
+        duration: 8000,
+      }
     )
+    void refetchBalance()
   }
+
+  const handleSubmit = () => {
+    if (!isConnected) return
+    if (isWrongChain) { switchChain({ chainId: ARC_TESTNET_ID }); return }
+    if (!sizeUsdNum || sizeUsdNum <= 0) { toast.error('Enter a position size'); return }
+    if (!usdcFact) { toast.error('USDC not found on Arc Testnet'); return }
+
+    const parsedMargin = parseAmount(ARC_TESTNET_ID, sizeUsd)
+    writeContract({
+      address: usdcFact.address as `0x${string}`,
+      abi: erc20Abi,
+      functionName: 'transfer',
+      args: [MARGIN_ESCROW, parsedMargin.raw],
+      chainId: ARC_TESTNET_ID,
+    })
+  }
+
+  const isLoading = isSubmitting || isConfirming
+  const buttonLabel = isWrongChain ? 'Switch to Arc Testnet'
+    : isSubmitting ? 'Confirm in wallet…'
+    : isConfirming ? 'Confirming on Arc…'
+    : side === 'buy' ? `Buy / Long ${market.baseAsset}` : `Sell / Short ${market.baseAsset}`
 
   return (
     <div
@@ -415,24 +452,24 @@ export default function OrderForm({ market, price, onPriceChange }: Props) {
         ) : (
           <button
             onClick={handleSubmit}
+            disabled={isLoading}
             style={{
               width: '100%',
               padding: '14px',
               borderRadius: 10,
-              background: side === 'buy' ? 'var(--buy)' : 'var(--sell)',
+              background: isWrongChain ? 'var(--accent)' : side === 'buy' ? 'var(--buy)' : 'var(--sell)',
               border: 'none',
               color: '#0b1320',
               fontSize: 14,
               fontWeight: 700,
-              cursor: 'pointer',
+              cursor: isLoading ? 'not-allowed' : 'pointer',
+              opacity: isLoading ? 0.7 : 1,
               fontFamily: 'DM Sans, sans-serif',
               letterSpacing: '0.02em',
               transition: 'opacity 0.15s',
             }}
-            onMouseEnter={e => { (e.currentTarget).style.opacity = '0.88' }}
-            onMouseLeave={e => { (e.currentTarget).style.opacity = '1' }}
           >
-            {side === 'buy' ? `Buy / Long ${market.baseAsset}` : `Sell / Short ${market.baseAsset}`}
+            {buttonLabel}
           </button>
         )}
       </div>

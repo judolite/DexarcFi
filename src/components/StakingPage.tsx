@@ -1,8 +1,16 @@
 import { useState } from 'react'
-import { useAccount } from 'wagmi'
+import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt, useSwitchChain } from 'wagmi'
+import { erc20Abi } from 'viem'
 import { ConnectKitButton } from 'connectkit'
-import { ChevronRight, CheckCircle, AlertCircle, Search } from 'lucide-react'
+import { ChevronRight, CheckCircle, AlertCircle, Search, ExternalLink } from 'lucide-react'
 import { toast } from 'sonner'
+import { getUsdc, buildTxExplorerUrl } from '@/onchain-facts'
+import { Amount, usdcDecimalsFor, parseAmount } from '@/onchain-money'
+
+const ARC_TESTNET_ID = 5042002
+// Staking escrow — receives delegated USDC on Arc Testnet.
+// Replace with your deployed staking contract before going to mainnet.
+const STAKING_ESCROW = '0x0000000000000000000000000000000000000002' as const
 
 interface Validator {
   name: string
@@ -37,11 +45,44 @@ function formatStake(n: number): string {
 }
 
 export default function StakingPage() {
-  const { isConnected } = useAccount()
+  const { address, isConnected, chainId } = useAccount()
+  const { switchChain } = useSwitchChain()
   const [search, setSearch] = useState('')
   const [selected, setSelected] = useState<string | null>(null)
   const [stakeAmount, setStakeAmount] = useState('')
   const [sortBy, setSortBy] = useState<'stake' | 'apr' | 'commission'>('stake')
+
+  const usdcFact = getUsdc(ARC_TESTNET_ID)
+  const isWrongChain = isConnected && chainId !== ARC_TESTNET_ID
+
+  const { data: rawBalance, refetch: refetchBalance } = useReadContract({
+    address: usdcFact?.address as `0x${string}`,
+    abi: erc20Abi,
+    functionName: 'balanceOf',
+    args: address ? [address] : undefined,
+    chainId: ARC_TESTNET_ID,
+    query: { enabled: !!address && !!usdcFact },
+  })
+  const balanceFormatted = rawBalance != null
+    ? Amount.fromRaw(rawBalance, usdcDecimalsFor(ARC_TESTNET_ID)).toFixed(2)
+    : '0.00'
+
+  const { writeContract, data: txHash, isPending: isSubmitting } = useWriteContract()
+  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({ hash: txHash })
+
+  if (isConfirmed && txHash && selected) {
+    const explorerUrl = buildTxExplorerUrl(ARC_TESTNET_ID, txHash)
+    toast.success(`Delegated ${stakeAmount} USDC to ${selected}`, {
+      description: (
+        <a href={explorerUrl} target="_blank" rel="noopener noreferrer"
+          style={{ color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: 4 }}>
+          View on Arc Explorer <ExternalLink size={12} />
+        </a>
+      ),
+      duration: 8000,
+    })
+    void refetchBalance()
+  }
 
   const filtered = VALIDATORS
     .filter(v => v.name.toLowerCase().includes(search.toLowerCase()) || v.description.toLowerCase().includes(search.toLowerCase()))
@@ -53,11 +94,26 @@ export default function StakingPage() {
 
   const handleDelegate = () => {
     if (!isConnected) { toast.error('Connect your wallet first'); return }
+    if (isWrongChain) { switchChain({ chainId: ARC_TESTNET_ID }); return }
     if (!selected) { toast.error('Select a validator first'); return }
     if (!stakeAmount || parseFloat(stakeAmount) <= 0) { toast.error('Enter stake amount'); return }
-    toast.success(`Delegated ${stakeAmount} USDC to ${selected}`, { description: 'Demo mode — no real funds moved on Arc Testnet' })
-    setStakeAmount('')
+    if (!usdcFact) { toast.error('USDC not found on Arc Testnet'); return }
+
+    const parsed = parseAmount(ARC_TESTNET_ID, stakeAmount)
+    writeContract({
+      address: usdcFact.address as `0x${string}`,
+      abi: erc20Abi,
+      functionName: 'transfer',
+      args: [STAKING_ESCROW, parsed.raw],
+      chainId: ARC_TESTNET_ID,
+    })
   }
+
+  const isLoading = isSubmitting || isConfirming
+  const delegateLabel = isWrongChain ? 'Switch to Arc Testnet'
+    : isSubmitting ? 'Confirm in wallet…'
+    : isConfirming ? 'Confirming on Arc…'
+    : 'Delegate Stake'
 
   return (
     <div style={{ flex: 1, overflowY: 'auto', padding: '32px 40px', background: 'var(--bg)' }}>
@@ -79,10 +135,10 @@ export default function StakingPage() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
             {[
               { label: 'Total Staked', value: formatStake(TOTAL_STAKED) + ' USDC', sub: 'Network-wide' },
-              { label: 'Your Stake', value: '0.00 USDC', sub: 'Not staking' },
+              { label: 'Your Stake', value: '0.00 USDC', sub: isConnected ? 'Connected' : 'Not staking' },
               { label: 'Est. APR', value: '~2.20%', sub: 'Network average' },
               { label: 'Validators', value: String(VALIDATORS.length), sub: 'Active' },
-              { label: 'Available to Stake', value: '0.00 USDC', sub: 'Wallet balance' },
+              { label: 'Available to Stake', value: balanceFormatted + ' USDC', sub: 'Wallet balance' },
               { label: 'Pending Rewards', value: '0.00 USDC', sub: 'Claimable' },
             ].map(({ label, value, sub }) => (
               <div key={label} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '14px 16px' }}>
@@ -144,9 +200,10 @@ export default function StakingPage() {
             ) : (
               <button
                 onClick={handleDelegate}
-                style={{ width: '100%', padding: '12px', borderRadius: 9, background: selected ? 'var(--accent)' : 'var(--surface-strong)', border: selected ? 'none' : '1px solid var(--border)', color: selected ? '#fff' : 'var(--subtle)', fontSize: 14, fontWeight: 700, cursor: selected ? 'pointer' : 'default', fontFamily: 'DM Sans, sans-serif' }}
+                disabled={isLoading}
+                style={{ width: '100%', padding: '12px', borderRadius: 9, background: (selected || isWrongChain) ? 'var(--accent)' : 'var(--surface-strong)', border: (selected || isWrongChain) ? 'none' : '1px solid var(--border)', color: (selected || isWrongChain) ? '#fff' : 'var(--subtle)', fontSize: 14, fontWeight: 700, cursor: isLoading ? 'not-allowed' : (selected || isWrongChain) ? 'pointer' : 'default', opacity: isLoading ? 0.7 : 1, fontFamily: 'DM Sans, sans-serif' }}
               >
-                Delegate Stake
+                {delegateLabel}
               </button>
             )}
           </div>

@@ -1,8 +1,22 @@
 import { useState } from 'react'
-import { useAccount } from 'wagmi'
+import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt, useSwitchChain } from 'wagmi'
+import { erc20Abi } from 'viem'
 import { ConnectKitButton } from 'connectkit'
-import { TrendingUp, Users, Lock, ChevronRight, Shield, Zap } from 'lucide-react'
+import { TrendingUp, Users, Lock, ChevronRight, Shield, Zap, ExternalLink, X } from 'lucide-react'
 import { toast } from 'sonner'
+import { getUsdc, buildTxExplorerUrl } from '@/onchain-facts'
+import { Amount, usdcDecimalsFor, parseAmount } from '@/onchain-money'
+
+const ARC_TESTNET_ID = 5042002
+// Vault contract addresses per vault name — receives USDC deposits on Arc Testnet.
+// Replace with your deployed vault contracts before going to mainnet.
+const VAULT_ADDRESSES: Record<string, `0x${string}`> = {
+  'Arc Delta Neutral':    '0x0000000000000000000000000000000000000003',
+  'Momentum Alpha':       '0x0000000000000000000000000000000000000004',
+  'HyperBase USDC Yield': '0x0000000000000000000000000000000000000005',
+  'Volatility Harvester': '0x0000000000000000000000000000000000000006',
+  'BTC-ETH Pair Trade':   '0x0000000000000000000000000000000000000007',
+}
 
 interface Vault {
   name: string
@@ -120,15 +134,71 @@ function RiskTag({ label }: { label: string }) {
 }
 
 export default function VaultsPage() {
-  const { isConnected } = useAccount()
+  const { address, isConnected, chainId } = useAccount()
+  const { switchChain } = useSwitchChain()
   const [filter, setFilter] = useState<'all' | 'featured'>('all')
+  const [depositVault, setDepositVault] = useState<Vault | null>(null)
+  const [depositAmount, setDepositAmount] = useState('')
+
+  const usdcFact = getUsdc(ARC_TESTNET_ID)
+  const isWrongChain = isConnected && chainId !== ARC_TESTNET_ID
+
+  const { data: rawBalance, refetch: refetchBalance } = useReadContract({
+    address: usdcFact?.address as `0x${string}`,
+    abi: erc20Abi,
+    functionName: 'balanceOf',
+    args: address ? [address] : undefined,
+    chainId: ARC_TESTNET_ID,
+    query: { enabled: !!address && !!usdcFact },
+  })
+  const balanceFormatted = rawBalance != null
+    ? Amount.fromRaw(rawBalance, usdcDecimalsFor(ARC_TESTNET_ID)).toFixed(2)
+    : '0.00'
+
+  const { writeContract, data: txHash, isPending: isSubmitting, reset: resetTx } = useWriteContract()
+  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({ hash: txHash })
+
+  if (isConfirmed && txHash && depositVault) {
+    const explorerUrl = buildTxExplorerUrl(ARC_TESTNET_ID, txHash)
+    toast.success(`Deposited ${depositAmount} USDC into ${depositVault.name}`, {
+      description: (
+        <a href={explorerUrl} target="_blank" rel="noopener noreferrer"
+          style={{ color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: 4 }}>
+          View on Arc Explorer <ExternalLink size={12} />
+        </a>
+      ),
+      duration: 8000,
+    })
+    void refetchBalance()
+    setDepositVault(null)
+    setDepositAmount('')
+    resetTx()
+  }
 
   const displayed = filter === 'featured' ? VAULTS.filter(v => v.featured) : VAULTS
 
   const handleDeposit = (vault: Vault) => {
     if (!isConnected) { toast.error('Connect your wallet first'); return }
-    toast.success(`Deposit into ${vault.name}`, { description: 'Demo mode — no real funds moved on Arc Testnet' })
+    if (isWrongChain) { switchChain({ chainId: ARC_TESTNET_ID }); return }
+    setDepositVault(vault)
   }
+
+  const handleConfirmDeposit = () => {
+    if (!depositVault || !depositAmount || parseFloat(depositAmount) <= 0) { toast.error('Enter deposit amount'); return }
+    if (!usdcFact) { toast.error('USDC not found on Arc Testnet'); return }
+    const vaultAddr = VAULT_ADDRESSES[depositVault.name]
+    if (!vaultAddr) { toast.error('Vault address not configured'); return }
+    const parsed = parseAmount(ARC_TESTNET_ID, depositAmount)
+    writeContract({
+      address: usdcFact.address as `0x${string}`,
+      abi: erc20Abi,
+      functionName: 'transfer',
+      args: [vaultAddr, parsed.raw],
+      chainId: ARC_TESTNET_ID,
+    })
+  }
+
+  const isLoading = isSubmitting || isConfirming
 
   return (
     <div style={{ flex: 1, overflowY: 'auto', padding: '32px 40px', background: 'var(--bg)' }}>
@@ -307,7 +377,7 @@ export default function VaultsPage() {
                     gap: 6,
                   }}
                 >
-                  Deposit USDC <ChevronRight size={14} />
+                  {isWrongChain ? 'Switch to Arc Testnet' : 'Deposit USDC'} <ChevronRight size={14} />
                 </button>
               </div>
             </div>
@@ -346,6 +416,56 @@ export default function VaultsPage() {
           </div>
         )}
       </div>
+
+      {/* Deposit modal */}
+      {depositVault && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: 16, padding: '28px', width: 360, boxShadow: '0 24px 80px rgba(0,0,0,0.5)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: 'var(--ink)' }}>Deposit into {depositVault.name}</h3>
+              <button onClick={() => { setDepositVault(null); setDepositAmount('') }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)' }}>
+                <X size={18} />
+              </button>
+            </div>
+            <div style={{ marginBottom: 6, fontSize: 12, color: 'var(--subtle)' }}>
+              Available: <span style={{ color: 'var(--ink)' }}>{balanceFormatted} USDC</span>
+            </div>
+            <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+              <input
+                type="number"
+                value={depositAmount}
+                onChange={e => setDepositAmount(e.target.value)}
+                placeholder="0.00"
+                style={{ flex: 1, background: 'none', border: 'none', outline: 'none', color: 'var(--ink)', fontSize: 16, fontFamily: 'JetBrains Mono, monospace' }}
+              />
+              <button onClick={() => setDepositAmount(balanceFormatted)} style={{ background: 'var(--surface-strong)', border: '1px solid var(--border)', borderRadius: 5, padding: '3px 8px', fontSize: 11, color: 'var(--accent)', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', fontWeight: 600 }}>MAX</button>
+              <span style={{ fontSize: 12, color: 'var(--muted)' }}>USDC</span>
+            </div>
+            {depositAmount && parseFloat(depositAmount) > 0 && (
+              <div style={{ background: 'rgba(59,130,246,0.07)', border: '1px solid rgba(59,130,246,0.2)', borderRadius: 8, padding: '10px 12px', fontSize: 12, marginBottom: 16 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                  <span style={{ color: 'var(--subtle)' }}>Est. APY</span>
+                  <span style={{ color: 'var(--success)', fontWeight: 700 }}>{depositVault.apy.toFixed(1)}%</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: 'var(--subtle)' }}>Lock period</span>
+                  <span style={{ color: 'var(--ink)' }}>{depositVault.lockPeriod}</span>
+                </div>
+              </div>
+            )}
+            <button
+              onClick={handleConfirmDeposit}
+              disabled={isLoading}
+              style={{ width: '100%', padding: '13px', borderRadius: 10, background: 'var(--accent)', border: 'none', color: '#fff', fontSize: 14, fontWeight: 700, cursor: isLoading ? 'not-allowed' : 'pointer', opacity: isLoading ? 0.7 : 1, fontFamily: 'DM Sans, sans-serif', marginBottom: 8 }}
+            >
+              {isSubmitting ? 'Confirm in wallet…' : isConfirming ? 'Confirming on Arc…' : 'Confirm Deposit'}
+            </button>
+            <p style={{ fontSize: 11, color: 'var(--subtle)', textAlign: 'center', margin: 0 }}>
+              This sends USDC on Arc Testnet. Transactions are irreversible.
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
