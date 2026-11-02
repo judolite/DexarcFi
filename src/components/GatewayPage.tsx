@@ -8,6 +8,7 @@ import type { EIP1193Provider } from 'viem'
 import { getProtocolContractByName, buildTxExplorerUrl } from '@/onchain-facts'
 import { Amount } from '@/onchain-money'
 import { ARC_TESTNET_TOKENS } from '@/tokens'
+import { assertTestnetOnly, parseAmountSafe, assertSufficientBalance, validateRecipient, ESCROW_ADDRESSES } from '@/security'
 import {
   Globe, ArrowDownToLine, ArrowUpFromLine, RefreshCw,
   ChevronRight, ExternalLink, Info, Layers,
@@ -116,10 +117,10 @@ export default function GatewayPage() {
   const gatewayWallet = getProtocolContractByName('GatewayWallet', 'testnet')
   const gatewayMinter = getProtocolContractByName('GatewayMinter', 'testnet')
 
-  // Escrow / treasury addresses (testnet placeholders)
+  // Testnet-only escrow addresses — guarded by assertTestnetOnly() at call site.
   const ESCROW: Record<string, `0x${string}`> = {
-    EURC:   '0x0000000000000000000000000000000000000005',
-    cirBTC: '0x0000000000000000000000000000000000000006',
+    EURC:   ESCROW_ADDRESSES.EURC_ESCROW,
+    cirBTC: ESCROW_ADDRESSES.CIRBTC_ESCROW,
   }
 
   // ── Gateway USDC balance fetch ──
@@ -157,34 +158,35 @@ export default function GatewayPage() {
   // ── Deposit ──
   const handleDeposit = async () => {
     if (!isConnected) { toast.error('Connect your wallet first'); return }
-    const amt = parseFloat(depositAmount)
-    if (!amt || amt <= 0) { toast.error('Enter a valid amount'); return }
     setDepositLoading(true); setDepositTx(null)
     try {
       if (token.isGateway) {
-        // USDC: Circle Gateway deposit
+        // USDC: Circle Gateway deposit — amount is a decimal string passed directly to the SDK
+        // Amount validation — SDK accepts decimal string; we validate format only (no balance available for gateway USDC)
+        parseAmountSafe(depositAmount, 6) // throws on bad input
         const adapter = await getAdapter(depositChain.chainId)
         const result = await appKit.unifiedBalance.deposit({ from: { adapter, chain: depositChain.id }, amount: depositAmount })
         const hash = result.txHash
-        const explorerUrl = result.explorerUrl ?? buildTxExplorerUrl(depositChain.chainId, hash)
-        setDepositTx({ hash, explorerUrl })
+        setDepositTx({ hash, explorerUrl: result.explorerUrl ?? buildTxExplorerUrl(depositChain.chainId, hash) })
         toast.success(`Deposited ${depositAmount} USDC from ${depositChain.label}`)
         setTimeout(() => { void fetchBalances() }, 2000)
       } else {
         // EURC / cirBTC: direct ERC-20 transfer to Arc Testnet escrow
+        assertTestnetOnly(walletChainId)
         const tokenAddress = token.symbol === 'EURC' ? eurcMeta.address : cirBtcMeta.address
-        const raw = BigInt(Math.round(amt * 10 ** token.decimals))
+        const rawBal = token.symbol === 'EURC' ? rawEurc : rawCirBtc
+        const rawAmt = parseAmountSafe(depositAmount, token.decimals)
+        if (rawBal != null) assertSufficientBalance(rawAmt, rawBal, token.symbol)
         if (walletChainId !== ARC_TESTNET_ID) await switchChainAsync({ chainId: ARC_TESTNET_ID })
         const hash = await writeContractAsync({
           address: tokenAddress,
           abi: erc20Abi,
           functionName: 'transfer',
-          args: [ESCROW[token.symbol], raw],
+          args: [ESCROW[token.symbol], rawAmt],
           chainId: ARC_TESTNET_ID,
         })
         await publicClient?.waitForTransactionReceipt({ hash })
-        const explorerUrl = buildTxExplorerUrl(ARC_TESTNET_ID, hash)
-        setDepositTx({ hash, explorerUrl })
+        setDepositTx({ hash, explorerUrl: buildTxExplorerUrl(ARC_TESTNET_ID, hash) })
         toast.success(`Deposited ${depositAmount} ${token.symbol} on Arc Testnet`)
         if (token.symbol === 'EURC') void refetchEurc()
         else void refetchCirBtc()
@@ -201,17 +203,18 @@ export default function GatewayPage() {
   // ── Spend / Transfer ──
   const handleSpend = async () => {
     if (!isConnected) { toast.error('Connect your wallet first'); return }
-    const amt = parseFloat(spendAmount)
-    if (!amt || amt <= 0) { toast.error('Enter a valid amount'); return }
-    if (!/^0x[0-9a-fA-F]{40}$/.test(spendRecipient)) { toast.error('Enter a valid recipient address'); return }
     if (token.isGateway && spendSourceChain.id === spendDestChain.id) { toast.error('Source and destination chains must differ'); return }
     setSpendLoading(true); setSpendResult(null)
     try {
+      // Validate recipient using viem — rejects zero address, invalid hex, and placeholders
+      const safeRecipient = validateRecipient(spendRecipient)
+
       if (token.isGateway) {
+        parseAmountSafe(spendAmount, 6) // format guard
         const adapter = await getAdapter(spendSourceChain.chainId)
         const result = await appKit.unifiedBalance.spend({
           from: { adapter, allocations: { amount: spendAmount, chain: spendSourceChain.id } },
-          to: { chain: spendDestChain.id, recipientAddress: spendRecipient, useForwarder: true },
+          to: { chain: spendDestChain.id, recipientAddress: safeRecipient, useForwarder: true },
           amount: spendAmount,
         })
         const hash = result.txHash
@@ -220,14 +223,17 @@ export default function GatewayPage() {
         setTimeout(() => { void fetchBalances() }, 3000)
       } else {
         // EURC / cirBTC: direct ERC-20 transfer on Arc Testnet
+        assertTestnetOnly(walletChainId)
         const tokenAddress = token.symbol === 'EURC' ? eurcMeta.address : cirBtcMeta.address
-        const raw = BigInt(Math.round(amt * 10 ** token.decimals))
+        const rawBal = token.symbol === 'EURC' ? rawEurc : rawCirBtc
+        const rawAmt = parseAmountSafe(spendAmount, token.decimals)
+        if (rawBal != null) assertSufficientBalance(rawAmt, rawBal, token.symbol)
         if (walletChainId !== ARC_TESTNET_ID) await switchChainAsync({ chainId: ARC_TESTNET_ID })
         const hash = await writeContractAsync({
           address: tokenAddress,
           abi: erc20Abi,
           functionName: 'transfer',
-          args: [spendRecipient as `0x${string}`, raw],
+          args: [safeRecipient, rawAmt],
           chainId: ARC_TESTNET_ID,
         })
         await publicClient?.waitForTransactionReceipt({ hash })

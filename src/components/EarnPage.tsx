@@ -6,17 +6,19 @@ import { TrendingUp, TrendingDown, Info, ChevronRight, ExternalLink, X } from 'l
 import { toast } from 'sonner'
 import { getUsdc, buildTxExplorerUrl } from '@/onchain-facts'
 import { Amount, usdcDecimalsFor } from '@/onchain-money'
+import { assertTestnetOnly, parseAmountSafe, assertSufficientBalance, ESCROW_ADDRESSES } from '@/security'
 
 const ARC_TESTNET_ID = 5042002
 
-// Lending pool contract addresses — receive USDC transfers on Arc Testnet.
-// Replace with your deployed lending contracts before going to mainnet.
+// Testnet-only lending pool addresses — guarded by assertTestnetOnly() at call site.
+// Only Supply is enabled until real lending contracts are deployed.
 const LENDING_POOL: Record<string, `0x${string}`> = {
-  USDC: '0x0000000000000000000000000000000000000010',
-  BTC:  '0x0000000000000000000000000000000000000011',
-  HYPE: '0x0000000000000000000000000000000000000012',
-  ETH:  '0x0000000000000000000000000000000000000013',
-  USDT: '0x0000000000000000000000000000000000000014',
+  USDC:   ESCROW_ADDRESSES.LENDING_USDC,
+  BTC:    ESCROW_ADDRESSES.LENDING_BTC,
+  HYPE:   ESCROW_ADDRESSES.LENDING_HYPE,
+  ETH:    ESCROW_ADDRESSES.LENDING_ETH,
+  EURC:   ESCROW_ADDRESSES.LENDING_EURC,
+  cirBTC: ESCROW_ADDRESSES.LENDING_CIRBTC,
 }
 
 interface AssetRow {
@@ -165,31 +167,45 @@ export default function EarnPage() {
   const openModal = (action: ModalAction, asset: string) => {
     if (!isConnected) { toast.error('Connect your wallet first'); return }
     if (isWrongChain) { switchChain({ chainId: ARC_TESTNET_ID }); return }
+    // Withdraw/Borrow/Repay require deployed lending contracts — blocked until then
+    if (action !== 'Supply') {
+      toast.info(`${action} will be available when the lending contracts are deployed on Arc Testnet.`)
+      return
+    }
     setAmount('')
     setModal({ action, asset })
   }
 
+  // Raw balance for the active modal asset — used for balance check
+  const modalRawBalance = modal?.asset === 'EURC' ? rawEurcBal
+    : modal?.asset === 'cirBTC' ? rawCirBtcBal
+    : rawUsdcBal
+
   const handleConfirm = () => {
     if (!modal) return
     if (isWrongChain) { switchChain({ chainId: ARC_TESTNET_ID }); return }
-    const amtNum = parseFloat(amount)
-    if (!amtNum || amtNum <= 0) { toast.error('Enter a valid amount'); return }
-
+    if (modal.action !== 'Supply') {
+      toast.info('Only Supply is currently enabled on Arc Testnet.')
+      return
+    }
     const dest = LENDING_POOL[modal.asset] ?? LENDING_POOL['USDC']
-
-    // Determine which token to transfer
     const tokenAddr = TOKEN_ADDRESSES[modal.asset] ?? usdcFact?.address
     const decimals = TOKEN_DECIMALS[modal.asset] ?? 6
     if (!tokenAddr) { toast.error('Token not supported'); return }
-
-    const rawAmt = BigInt(Math.round(amtNum * 10 ** decimals))
-    writeContract({
-      address: tokenAddr,
-      abi: erc20Abi,
-      functionName: 'transfer',
-      args: [dest, rawAmt],
-      chainId: ARC_TESTNET_ID,
-    })
+    try {
+      assertTestnetOnly(chainId)
+      const rawAmt = parseAmountSafe(amount, decimals)
+      if (modalRawBalance != null) assertSufficientBalance(rawAmt, modalRawBalance, modal.asset)
+      writeContract({
+        address: tokenAddr,
+        abi: erc20Abi,
+        functionName: 'transfer',
+        args: [dest, rawAmt],
+        chainId: ARC_TESTNET_ID,
+      })
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Validation failed')
+    }
   }
 
   const isLoading = isSubmitting || isConfirming

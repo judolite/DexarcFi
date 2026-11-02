@@ -5,12 +5,12 @@ import { ConnectKitButton } from 'connectkit'
 import { ChevronRight, CheckCircle, AlertCircle, Search, ExternalLink } from 'lucide-react'
 import { toast } from 'sonner'
 import { getUsdc, buildTxExplorerUrl } from '@/onchain-facts'
-import { Amount, usdcDecimalsFor, parseAmount } from '@/onchain-money'
+import { Amount, usdcDecimalsFor } from '@/onchain-money'
+import { assertTestnetOnly, parseAmountSafe, assertSufficientBalance, ESCROW_ADDRESSES } from '@/security'
 
 const ARC_TESTNET_ID = 5042002
-// Staking escrow — receives delegated USDC on Arc Testnet.
-// Replace with your deployed staking contract before going to mainnet.
-const STAKING_ESCROW = '0x0000000000000000000000000000000000000002' as const
+// Testnet-only escrow — guarded by assertTestnetOnly() at call site.
+const STAKING_ESCROW = ESCROW_ADDRESSES.STAKING
 
 interface Validator {
   name: string
@@ -96,17 +96,22 @@ export default function StakingPage() {
     if (!isConnected) { toast.error('Connect your wallet first'); return }
     if (isWrongChain) { switchChain({ chainId: ARC_TESTNET_ID }); return }
     if (!selected) { toast.error('Select a validator first'); return }
-    if (!stakeAmount || parseFloat(stakeAmount) <= 0) { toast.error('Enter stake amount'); return }
     if (!usdcFact) { toast.error('USDC not found on Arc Testnet'); return }
-
-    const parsed = parseAmount(ARC_TESTNET_ID, stakeAmount)
-    writeContract({
-      address: usdcFact.address as `0x${string}`,
-      abi: erc20Abi,
-      functionName: 'transfer',
-      args: [STAKING_ESCROW, parsed.raw],
-      chainId: ARC_TESTNET_ID,
-    })
+    try {
+      assertTestnetOnly(chainId)
+      const decimals = usdcDecimalsFor(ARC_TESTNET_ID)
+      const rawAmt = parseAmountSafe(stakeAmount, decimals)
+      if (rawBalance != null) assertSufficientBalance(rawAmt, rawBalance, 'USDC')
+      writeContract({
+        address: usdcFact.address as `0x${string}`,
+        abi: erc20Abi,
+        functionName: 'transfer',
+        args: [STAKING_ESCROW, rawAmt],
+        chainId: ARC_TESTNET_ID,
+      })
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Validation failed')
+    }
   }
 
   const isLoading = isSubmitting || isConfirming

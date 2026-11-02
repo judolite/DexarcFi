@@ -7,6 +7,7 @@ import type { EIP1193Provider } from 'viem'
 import { toast } from 'sonner'
 import { ArrowUpDown, RefreshCw, ExternalLink, Info, ChevronDown } from 'lucide-react'
 import { ARC_TESTNET_TOKENS, type TokenInfo } from '@/tokens'
+import { assertTestnetOnly, parseAmountSafe } from '@/security'
 
 // One AppKit instance for the whole page
 const appKit = new AppKit()
@@ -82,7 +83,7 @@ function TokenSelector({ selected, exclude, onSelect }: { selected: TokenInfo; e
 }
 
 export default function SwapPage() {
-  const { address, isConnected, connector } = useAccount()
+  const { address, isConnected, connector, chainId } = useAccount()
   const { switchChainAsync } = useSwitchChain()
 
   const [tokenIn, setTokenIn] = useState<TokenInfo>(TOKENS[0])   // USDC
@@ -136,9 +137,9 @@ export default function SwapPage() {
 
   const handleGetQuote = async () => {
     if (!address) { toast.error('Connect your wallet first'); return }
-    const amt = parseFloat(amountIn)
-    if (!amt || amt <= 0) { toast.error('Enter an amount to swap'); return }
     if (tokenIn.symbol === tokenOut.symbol) { toast.error('Select different tokens'); return }
+    try { parseAmountSafe(amountIn, tokenIn.decimals) } catch (e) { toast.error(e instanceof Error ? e.message : 'Invalid amount'); return }
+    try { assertTestnetOnly(chainId) } catch (e) { toast.error(e instanceof Error ? e.message : 'Wrong chain'); return }
 
     setEstimating(true)
     setReviewed(null)
@@ -170,6 +171,7 @@ export default function SwapPage() {
     }
     setSwapping(true)
     try {
+      assertTestnetOnly(chainId)
       const adapter = await getAdapter()
       const result = await appKit.swap({
         from: { adapter, chain: 'Arc_Testnet' },

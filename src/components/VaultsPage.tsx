@@ -5,17 +5,17 @@ import { ConnectKitButton } from 'connectkit'
 import { TrendingUp, Users, Lock, ChevronRight, Shield, Zap, ExternalLink, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { getUsdc, buildTxExplorerUrl } from '@/onchain-facts'
-import { Amount, usdcDecimalsFor, parseAmount } from '@/onchain-money'
+import { Amount, usdcDecimalsFor } from '@/onchain-money'
+import { assertTestnetOnly, parseAmountSafe, assertSufficientBalance, ESCROW_ADDRESSES } from '@/security'
 
 const ARC_TESTNET_ID = 5042002
-// Vault contract addresses per vault name — receives USDC deposits on Arc Testnet.
-// Replace with your deployed vault contracts before going to mainnet.
+// Testnet-only vault addresses — guarded by assertTestnetOnly() at call site.
 const VAULT_ADDRESSES: Record<string, `0x${string}`> = {
-  'Arc Delta Neutral':    '0x0000000000000000000000000000000000000003',
-  'Momentum Alpha':       '0x0000000000000000000000000000000000000004',
-  'HyperBase USDC Yield': '0x0000000000000000000000000000000000000005',
-  'Volatility Harvester': '0x0000000000000000000000000000000000000006',
-  'BTC-ETH Pair Trade':   '0x0000000000000000000000000000000000000007',
+  'Arc Delta Neutral':    ESCROW_ADDRESSES.VAULT_1,
+  'Momentum Alpha':       ESCROW_ADDRESSES.VAULT_2,
+  'HyperBase USDC Yield': ESCROW_ADDRESSES.VAULT_3,
+  'Volatility Harvester': ESCROW_ADDRESSES.VAULT_4,
+  'BTC-ETH Pair Trade':   ESCROW_ADDRESSES.VAULT_5,
 }
 
 interface Vault {
@@ -184,18 +184,25 @@ export default function VaultsPage() {
   }
 
   const handleConfirmDeposit = () => {
-    if (!depositVault || !depositAmount || parseFloat(depositAmount) <= 0) { toast.error('Enter deposit amount'); return }
+    if (!depositVault) { toast.error('No vault selected'); return }
     if (!usdcFact) { toast.error('USDC not found on Arc Testnet'); return }
     const vaultAddr = VAULT_ADDRESSES[depositVault.name]
     if (!vaultAddr) { toast.error('Vault address not configured'); return }
-    const parsed = parseAmount(ARC_TESTNET_ID, depositAmount)
-    writeContract({
-      address: usdcFact.address as `0x${string}`,
-      abi: erc20Abi,
-      functionName: 'transfer',
-      args: [vaultAddr, parsed.raw],
-      chainId: ARC_TESTNET_ID,
-    })
+    try {
+      assertTestnetOnly(chainId)
+      const decimals = usdcDecimalsFor(ARC_TESTNET_ID)
+      const rawAmt = parseAmountSafe(depositAmount, decimals)
+      if (rawBalance != null) assertSufficientBalance(rawAmt, rawBalance, 'USDC')
+      writeContract({
+        address: usdcFact.address as `0x${string}`,
+        abi: erc20Abi,
+        functionName: 'transfer',
+        args: [vaultAddr, rawAmt],
+        chainId: ARC_TESTNET_ID,
+      })
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Validation failed')
+    }
   }
 
   const isLoading = isSubmitting || isConfirming

@@ -3,9 +3,10 @@ import { useAccount, useReadContract, useWriteContract, useWaitForTransactionRec
 import { erc20Abi } from 'viem'
 import { ConnectKitButton } from 'connectkit'
 import { getUsdc, buildTxExplorerUrl } from '@/onchain-facts'
-import { Amount, usdcDecimalsFor, parseAmount } from '@/onchain-money'
+import { Amount, usdcDecimalsFor } from '@/onchain-money'
+import { assertTestnetOnly, parseAmountSafe, assertSufficientBalance, ESCROW_ADDRESSES } from '@/security'
 import type { Market } from '../hooks/useMarketData'
-import { Info, ExternalLink } from 'lucide-react'
+import { Info, ExternalLink, ShieldAlert } from 'lucide-react'
 import { toast } from 'sonner'
 
 const ARC_TESTNET_ID = 5042002
@@ -19,9 +20,8 @@ interface Props {
 const LEVERAGES = [1, 2, 3, 5, 10, 20, 50]
 const ORDER_TYPES = ['Market', 'Limit', 'Stop Market', 'Stop Limit']
 
-// Escrow address for margin — receives USDC on Arc Testnet when an order is placed.
-// Replace with your deployed perp engine contract address before going to mainnet.
-const MARGIN_ESCROW = '0x0000000000000000000000000000000000000001' as const
+// Testnet-only escrow. Imported from security.ts — guarded by assertTestnetOnly().
+const MARGIN_ESCROW = ESCROW_ADDRESSES.MARGIN
 
 export default function OrderForm({ market, price, onPriceChange }: Props) {
   const { address, isConnected, chainId } = useAccount()
@@ -79,17 +79,22 @@ export default function OrderForm({ market, price, onPriceChange }: Props) {
   const handleSubmit = () => {
     if (!isConnected) return
     if (isWrongChain) { switchChain({ chainId: ARC_TESTNET_ID }); return }
-    if (!sizeUsdNum || sizeUsdNum <= 0) { toast.error('Enter a position size'); return }
     if (!usdcFact) { toast.error('USDC not found on Arc Testnet'); return }
-
-    const parsedMargin = parseAmount(ARC_TESTNET_ID, sizeUsd)
-    writeContract({
-      address: usdcFact.address as `0x${string}`,
-      abi: erc20Abi,
-      functionName: 'transfer',
-      args: [MARGIN_ESCROW, parsedMargin.raw],
-      chainId: ARC_TESTNET_ID,
-    })
+    try {
+      assertTestnetOnly(chainId)
+      const decimals = usdcDecimalsFor(ARC_TESTNET_ID)
+      const rawAmt = parseAmountSafe(sizeUsd, decimals)
+      if (rawBalance != null) assertSufficientBalance(rawAmt, rawBalance, 'USDC')
+      writeContract({
+        address: usdcFact.address as `0x${string}`,
+        abi: erc20Abi,
+        functionName: 'transfer',
+        args: [MARGIN_ESCROW, rawAmt],
+        chainId: ARC_TESTNET_ID,
+      })
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Validation failed')
+    }
   }
 
   const isLoading = isSubmitting || isConfirming
@@ -110,6 +115,12 @@ export default function OrderForm({ market, price, onPriceChange }: Props) {
         flexShrink: 0,
       }}
     >
+      {/* Testnet safety banner */}
+      <div style={{ padding: '5px 10px', background: 'rgba(251,191,36,0.08)', borderBottom: '1px solid rgba(251,191,36,0.2)', display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
+        <ShieldAlert size={11} color="#fbbf24" />
+        <span style={{ fontSize: 10, color: '#fbbf24', fontWeight: 500 }}>Testnet only — Arc Testnet. Do not use real mainnet funds.</span>
+      </div>
+
       {/* Buy / Sell tabs */}
       <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
         {(['buy', 'sell'] as const).map(s => (
