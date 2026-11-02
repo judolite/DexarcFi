@@ -5,7 +5,7 @@ import { ConnectKitButton } from 'connectkit'
 import { TrendingUp, TrendingDown, Info, ChevronRight, ExternalLink, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { getUsdc, buildTxExplorerUrl } from '@/onchain-facts'
-import { Amount, usdcDecimalsFor, parseAmount } from '@/onchain-money'
+import { Amount, usdcDecimalsFor } from '@/onchain-money'
 
 const ARC_TESTNET_ID = 5042002
 
@@ -40,10 +40,12 @@ interface BorrowRow {
 }
 
 const SUPPLY_ASSETS: AssetRow[] = [
-  { asset: 'USDC', ltv: 'N/A',    apy: 3.44, oraclePrice: 1.0,      totalSupplied: '560,171,263.84', youSupplied: '0.00',    interestEarned: '0.00', supplyable: true },
-  { asset: 'BTC',  ltv: '50.00%', apy: 0.00, oraclePrice: 81759.71, totalSupplied: '2,258.51',        youSupplied: '0.00000', interestEarned: null,   supplyable: true },
-  { asset: 'HYPE', ltv: '65.00%', apy: 0.00, oraclePrice: 78.17,    totalSupplied: '14,416,831.67',   youSupplied: '0.00',    interestEarned: null,   supplyable: true },
-  { asset: 'ETH',  ltv: '70.00%', apy: 0.12, oraclePrice: 3412.5,   totalSupplied: '18,420.50',       youSupplied: '0.00000', interestEarned: '0.00', supplyable: true },
+  { asset: 'USDC',   ltv: 'N/A',    apy: 3.44, oraclePrice: 1.0,     totalSupplied: '560,171,263.84', youSupplied: '0.00',        interestEarned: '0.00', supplyable: true },
+  { asset: 'EURC',   ltv: 'N/A',    apy: 2.81, oraclePrice: 1.0832,  totalSupplied: '12,840,003.00',  youSupplied: '0.00',        interestEarned: '0.00', supplyable: true },
+  { asset: 'cirBTC', ltv: '60.00%', apy: 0.48, oraclePrice: 67450.0, totalSupplied: '843.21',          youSupplied: '0.00000000',  interestEarned: null,   supplyable: true },
+  { asset: 'BTC',    ltv: '50.00%', apy: 0.00, oraclePrice: 81759.71,totalSupplied: '2,258.51',        youSupplied: '0.00000',     interestEarned: null,   supplyable: true },
+  { asset: 'HYPE',   ltv: '65.00%', apy: 0.00, oraclePrice: 78.17,   totalSupplied: '14,416,831.67',   youSupplied: '0.00',        interestEarned: null,   supplyable: true },
+  { asset: 'ETH',    ltv: '70.00%', apy: 0.12, oraclePrice: 3412.5,  totalSupplied: '18,420.50',       youSupplied: '0.00000',     interestEarned: '0.00', supplyable: true },
 ]
 
 const BORROW_ASSETS: BorrowRow[] = [
@@ -52,7 +54,18 @@ const BORROW_ASSETS: BorrowRow[] = [
 ]
 
 const ASSET_COLORS: Record<string, string> = {
-  USDC: '#2775ca', BTC: '#f7931a', ETH: '#627eea', HYPE: '#7b61ff', USDT: '#26a17b',
+  USDC: '#2775ca', EURC: '#003399', cirBTC: '#f7931a',
+  BTC: '#f7931a', ETH: '#627eea', HYPE: '#7b61ff', USDT: '#26a17b',
+}
+
+// Arc Testnet token addresses
+const TOKEN_ADDRESSES: Record<string, `0x${string}`> = {
+  USDC:   '0x3600000000000000000000000000000000000000',
+  EURC:   '0x89B50855Aa3bE2F677cD6303Cec089B5F319D72a',
+  cirBTC: '0xf0C4a4CE82A5746AbAAd9425360Ab04fbBA432BF',
+}
+const TOKEN_DECIMALS: Record<string, number> = {
+  USDC: 6, EURC: 6, cirBTC: 8,
 }
 
 function formatOraclePrice(p: number): string {
@@ -83,18 +96,43 @@ export default function EarnPage() {
   const usdcFact = getUsdc(ARC_TESTNET_ID)
   const isWrongChain = isConnected && chainId !== ARC_TESTNET_ID
 
-  // Live USDC balance on Arc Testnet
-  const { data: rawBalance } = useReadContract({
+  // Live USDC balance
+  const { data: rawUsdcBal } = useReadContract({
     address: usdcFact?.address as `0x${string}`,
-    abi: erc20Abi,
-    functionName: 'balanceOf',
+    abi: erc20Abi, functionName: 'balanceOf',
     args: address ? [address] : undefined,
     chainId: ARC_TESTNET_ID,
     query: { enabled: !!address && !!usdcFact },
   })
-  const usdcBalance = rawBalance != null
-    ? Amount.fromRaw(rawBalance, usdcDecimalsFor(ARC_TESTNET_ID)).toFixed(2)
-    : '0.00'
+  const usdcBalance = rawUsdcBal != null
+    ? Amount.fromRaw(rawUsdcBal, usdcDecimalsFor(ARC_TESTNET_ID)).toFixed(2) : '0.00'
+
+  // Live EURC balance (6 decimals)
+  const { data: rawEurcBal } = useReadContract({
+    address: TOKEN_ADDRESSES['EURC'],
+    abi: erc20Abi, functionName: 'balanceOf',
+    args: address ? [address] : undefined,
+    chainId: ARC_TESTNET_ID,
+    query: { enabled: !!address },
+  })
+  const eurcBalance = rawEurcBal != null
+    ? Amount.fromRaw(rawEurcBal, 6).toFixed(2) : '0.00'
+
+  // Live cirBTC balance (8 decimals)
+  const { data: rawCirBtcBal } = useReadContract({
+    address: TOKEN_ADDRESSES['cirBTC'],
+    abi: erc20Abi, functionName: 'balanceOf',
+    args: address ? [address] : undefined,
+    chainId: ARC_TESTNET_ID,
+    query: { enabled: !!address },
+  })
+  const cirBtcBalance = rawCirBtcBal != null
+    ? Amount.fromRaw(rawCirBtcBal, 8).toFixed(8) : '0.00000000'
+
+  // Pick displayed wallet balance for the active modal asset
+  const modalBalance = modal?.asset === 'EURC' ? eurcBalance
+    : modal?.asset === 'cirBTC' ? cirBtcBalance
+    : usdcBalance
 
   const { writeContract, data: txHash, isPending: isSubmitting, isError, error } = useWriteContract()
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash: txHash })
@@ -132,26 +170,24 @@ export default function EarnPage() {
   }
 
   const handleConfirm = () => {
-    if (!modal || !usdcFact) return
+    if (!modal) return
     if (isWrongChain) { switchChain({ chainId: ARC_TESTNET_ID }); return }
     const amtNum = parseFloat(amount)
     if (!amtNum || amtNum <= 0) { toast.error('Enter a valid amount'); return }
 
-    // For Supply/Borrow: transfer USDC to lending pool.
-    // For Withdraw/Repay: same transfer pattern (in a real lending contract these would be different calls).
     const dest = LENDING_POOL[modal.asset] ?? LENDING_POOL['USDC']
-    let parsed
-    try {
-      parsed = parseAmount(ARC_TESTNET_ID, amount)
-    } catch {
-      toast.error('Invalid amount'); return
-    }
 
+    // Determine which token to transfer
+    const tokenAddr = TOKEN_ADDRESSES[modal.asset] ?? usdcFact?.address
+    const decimals = TOKEN_DECIMALS[modal.asset] ?? 6
+    if (!tokenAddr) { toast.error('Token not supported'); return }
+
+    const rawAmt = BigInt(Math.round(amtNum * 10 ** decimals))
     writeContract({
-      address: usdcFact.address as `0x${string}`,
+      address: tokenAddr,
       abi: erc20Abi,
       functionName: 'transfer',
-      args: [dest, parsed.raw],
+      args: [dest, rawAmt],
       chainId: ARC_TESTNET_ID,
     })
   }
@@ -181,7 +217,7 @@ export default function EarnPage() {
           {[
             { label: 'Your Total Supplied', value: '$0.00',       icon: <TrendingUp  size={18} color="var(--success)" /> },
             { label: 'Your Total Borrowed', value: '$0.00',       icon: <TrendingDown size={18} color="var(--danger)" /> },
-            { label: 'Wallet USDC Balance', value: usdcBalance + ' USDC', icon: <Info size={18} color="var(--accent)" /> },
+            { label: 'Wallet Balance', value: usdcBalance + ' USDC', icon: <Info size={18} color="var(--accent)" /> },
           ].map(({ label, value, icon }) => (
             <div key={label} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '20px 24px', display: 'flex', alignItems: 'center', gap: 16 }}>
               <div style={{ width: 40, height: 40, borderRadius: 10, background: 'var(--surface-strong)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -323,8 +359,8 @@ export default function EarnPage() {
             {/* Balance */}
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
               <span style={{ fontSize: 12, color: 'var(--subtle)' }}>Wallet USDC</span>
-              <button onClick={() => setAmount(usdcBalance)} style={{ background: 'none', border: 'none', fontSize: 12, color: 'var(--accent)', cursor: 'pointer', padding: 0 }}>
-                Max: {usdcBalance} USDC
+              <button onClick={() => setAmount(modalBalance)} style={{ background: 'none', border: 'none', fontSize: 12, color: 'var(--accent)', cursor: 'pointer', padding: 0 }}>
+                Max: {modalBalance} {modal?.asset ?? 'USDC'}
               </button>
             </div>
 
@@ -344,7 +380,7 @@ export default function EarnPage() {
             {/* Quick amounts */}
             <div style={{ display: 'flex', gap: 6, marginBottom: 20 }}>
               {[25, 50, 75, 100].map(pct => (
-                <button key={pct} onClick={() => setAmount(((parseFloat(usdcBalance) * pct) / 100).toFixed(2))} style={{ flex: 1, padding: '5px 0', borderRadius: 6, background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--muted)', fontSize: 11, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>
+                <button key={pct} onClick={() => setAmount(((parseFloat(modalBalance) * pct) / 100).toFixed(modal?.asset === 'cirBTC' ? 8 : 2))} style={{ flex: 1, padding: '5px 0', borderRadius: 6, background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--muted)', fontSize: 11, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>
                   {pct}%
                 </button>
               ))}

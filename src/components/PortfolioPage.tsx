@@ -5,8 +5,16 @@ import { ConnectKitButton } from 'connectkit'
 import { ChevronRight, ExternalLink, RefreshCw, Wallet, TrendingUp, ArrowUpRight, ArrowDownLeft, Clock } from 'lucide-react'
 import { getUsdc, requireChain, buildTxExplorerUrl } from '@/onchain-facts'
 import { Amount, usdcDecimalsFor } from '@/onchain-money'
+import { ARC_TESTNET_TOKENS } from '@/tokens'
 
 const ARC_TESTNET_ID = 5042002
+
+// Token price proxies (USD) — updated periodically from market data
+const TOKEN_PRICES: Record<string, number> = {
+  USDC: 1.0,
+  EURC: 1.0832,
+  cirBTC: 67450.0,
+}
 
 interface TxRow {
   hash: string
@@ -38,7 +46,7 @@ export default function PortfolioPage() {
   const chain = requireChain(ARC_TESTNET_ID)
 
   // Live USDC balance
-  const { data: rawBalance, refetch: refetchBalance, isLoading: balanceLoading } = useReadContract({
+  const { data: rawUsdcBalance, refetch: refetchBalance, isLoading: balanceLoading } = useReadContract({
     address: usdcFact?.address as `0x${string}`,
     abi: erc20Abi,
     functionName: 'balanceOf',
@@ -46,10 +54,41 @@ export default function PortfolioPage() {
     chainId: ARC_TESTNET_ID,
     query: { enabled: !!address && !!usdcFact, refetchInterval: 10_000 },
   })
+  const usdcBalance = rawUsdcBalance != null
+    ? Amount.fromRaw(rawUsdcBalance, usdcDecimalsFor(ARC_TESTNET_ID)).toFixed(2) : '0.00'
 
-  const usdcBalance = rawBalance != null
-    ? Amount.fromRaw(rawBalance, usdcDecimalsFor(ARC_TESTNET_ID)).toFixed(2)
-    : '0.00'
+  // Live EURC balance (6 decimals)
+  const eurcToken = ARC_TESTNET_TOKENS.find(t => t.symbol === 'EURC')!
+  const { data: rawEurcBalance, refetch: refetchEurc } = useReadContract({
+    address: eurcToken.address,
+    abi: erc20Abi,
+    functionName: 'balanceOf',
+    args: address ? [address] : undefined,
+    chainId: ARC_TESTNET_ID,
+    query: { enabled: !!address, refetchInterval: 10_000 },
+  })
+  const eurcBalance = rawEurcBalance != null
+    ? Amount.fromRaw(rawEurcBalance, 6).toFixed(2) : '0.00'
+
+  // Live cirBTC balance (8 decimals)
+  const cirBtcToken = ARC_TESTNET_TOKENS.find(t => t.symbol === 'cirBTC')!
+  const { data: rawCirBtcBalance, refetch: refetchCirBtc } = useReadContract({
+    address: cirBtcToken.address,
+    abi: erc20Abi,
+    functionName: 'balanceOf',
+    args: address ? [address] : undefined,
+    chainId: ARC_TESTNET_ID,
+    query: { enabled: !!address, refetchInterval: 10_000 },
+  })
+  const cirBtcBalance = rawCirBtcBalance != null
+    ? Amount.fromRaw(rawCirBtcBalance, 8).toFixed(8) : '0.00000000'
+
+  const handleRefresh = () => {
+    void refetchBalance()
+    void refetchEurc()
+    void refetchCirBtc()
+    void fetchHistory()
+  }
 
   // USDC Transfer history via eth_getLogs
   const [txRows, setTxRows] = useState<TxRow[]>([])
@@ -151,7 +190,7 @@ export default function PortfolioPage() {
             </a>
           </div>
           <button
-            onClick={() => { void refetchBalance(); void fetchHistory() }}
+            onClick={handleRefresh}
             disabled={txLoading}
             style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--muted)', padding: '8px 14px', borderRadius: 8, fontSize: 13, cursor: txLoading ? 'not-allowed' : 'pointer', fontFamily: 'DM Sans, sans-serif' }}
           >
@@ -207,25 +246,34 @@ export default function PortfolioPage() {
             {['Asset', 'Balance', 'Price', 'Value (USD)'].map((h, i) => (
               <span key={h} style={{ fontSize: 11, color: 'var(--subtle)', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600, paddingBottom: 8, textAlign: i > 0 ? 'right' : 'left' }}>{h}</span>
             ))}
-            {/* USDC row */}
-            <div style={{ display: 'contents' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 0', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#2775ca', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#fff', flexShrink: 0 }}>UC</div>
-                <div>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)' }}>USDC</div>
-                  <div style={{ fontSize: 11, color: 'var(--subtle)' }}>USD Coin</div>
+            {/* Token rows */}
+            {[
+              { symbol: 'USDC',   name: 'USD Coin',                color: '#2775ca', abbr: 'UC', bal: usdcBalance,   price: TOKEN_PRICES['USDC'],   loading: balanceLoading },
+              { symbol: 'EURC',   name: 'Euro Coin',               color: '#003399', abbr: 'EU', bal: eurcBalance,   price: TOKEN_PRICES['EURC'],   loading: false },
+              { symbol: 'cirBTC', name: 'Circle Wrapped Bitcoin',  color: '#f7931a', abbr: 'BT', bal: cirBtcBalance, price: TOKEN_PRICES['cirBTC'], loading: false },
+            ].map(({ symbol, name, color, abbr, bal, price, loading }) => {
+              const value = (parseFloat(bal) * price).toFixed(2)
+              return (
+                <div key={symbol} style={{ display: 'contents' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 0', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                    <div style={{ width: 32, height: 32, borderRadius: '50%', background: color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#fff', flexShrink: 0 }}>{abbr}</div>
+                    <div>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)' }}>{symbol}</div>
+                      <div style={{ fontSize: 11, color: 'var(--subtle)' }}>{name}</div>
+                    </div>
+                  </div>
+                  <div className="mono" style={{ fontSize: 14, color: 'var(--ink)', textAlign: 'right', padding: '12px 0', borderTop: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+                    {loading ? '…' : bal}
+                  </div>
+                  <div className="mono" style={{ fontSize: 14, color: 'var(--ink-2)', textAlign: 'right', padding: '12px 0', borderTop: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+                    ${price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </div>
+                  <div className="mono" style={{ fontSize: 14, color: 'var(--ink)', textAlign: 'right', padding: '12px 0', borderTop: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+                    {loading ? '…' : '$' + value}
+                  </div>
                 </div>
-              </div>
-              <div className="mono" style={{ fontSize: 14, color: 'var(--ink)', textAlign: 'right', padding: '12px 0', borderTop: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
-                {balanceLoading ? '…' : usdcBalance}
-              </div>
-              <div className="mono" style={{ fontSize: 14, color: 'var(--ink-2)', textAlign: 'right', padding: '12px 0', borderTop: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
-                $1.00
-              </div>
-              <div className="mono" style={{ fontSize: 14, color: 'var(--ink)', textAlign: 'right', padding: '12px 0', borderTop: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
-                ${balanceLoading ? '…' : usdcBalance}
-              </div>
-            </div>
+              )
+            })}
           </div>
         </div>
 

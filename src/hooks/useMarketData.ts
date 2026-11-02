@@ -48,6 +48,9 @@ const MARKETS: Market[] = [
   { symbol: 'USDC-PERP', baseAsset: 'USDC', markPrice: 1.0002, indexPrice: 1.0001, fundingRate: 0.000013, openInterest: 4_200_000, volume24h: 12_800_000, change24h: 0.02, high24h: 1.0008, low24h: 0.9995 },
   { symbol: 'ETH-PERP', baseAsset: 'ETH', markPrice: 3412.5, indexPrice: 3411.8, fundingRate: 0.000082, openInterest: 89_200_000, volume24h: 420_000_000, change24h: 1.4, high24h: 3445.0, low24h: 3375.0 },
   { symbol: 'BTC-PERP', baseAsset: 'BTC', markPrice: 67_450.0, indexPrice: 67_438.5, fundingRate: 0.000110, openInterest: 540_000_000, volume24h: 1_200_000_000, change24h: 0.8, high24h: 68_200.0, low24h: 66_900.0 },
+  // Circle native Arc assets
+  { symbol: 'EURC-PERP', baseAsset: 'EURC', markPrice: 1.0832, indexPrice: 1.0831, fundingRate: 0.000008, openInterest: 3_100_000, volume24h: 8_400_000, change24h: 0.11, high24h: 1.0851, low24h: 1.0808 },
+  { symbol: 'cirBTC-PERP', baseAsset: 'cirBTC', markPrice: 67_450.0, indexPrice: 67_438.5, fundingRate: 0.000105, openInterest: 220_000_000, volume24h: 480_000_000, change24h: 0.8, high24h: 68_200.0, low24h: 66_900.0 },
   { symbol: 'SOL-PERP', baseAsset: 'SOL', markPrice: 168.42, indexPrice: 168.35, fundingRate: 0.000095, openInterest: 34_000_000, volume24h: 95_000_000, change24h: -0.5, high24h: 172.8, low24h: 165.9 },
   { symbol: 'ARB-PERP', baseAsset: 'ARB', markPrice: 0.8821, indexPrice: 0.8815, fundingRate: -0.000043, openInterest: 9_800_000, volume24h: 18_500_000, change24h: -1.2, high24h: 0.905, low24h: 0.871 },
   { symbol: 'AVAX-PERP', baseAsset: 'AVAX', markPrice: 38.74, indexPrice: 38.71, fundingRate: 0.000067, openInterest: 14_100_000, volume24h: 31_000_000, change24h: 2.1, high24h: 39.5, low24h: 37.9 },
