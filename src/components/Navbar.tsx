@@ -1,10 +1,11 @@
 import { ConnectKitButton } from 'connectkit'
 import { BarChart2, Zap } from 'lucide-react'
 
-export type NavTab = 'Trade' | 'Gateway' | 'Earn' | 'Vaults' | 'Staking' | 'Portfolio' | 'Markets' | 'Leaderboard'
+export type NavTab = 'Trade' | 'Swap' | 'Gateway' | 'Earn' | 'Vaults' | 'Staking' | 'Portfolio' | 'Markets' | 'Leaderboard'
 
-const NAV_ITEMS: { label: NavTab; group?: 'earn' | 'gateway' }[] = [
+const NAV_ITEMS: { label: NavTab; group?: 'earn' | 'gateway' | 'swap' }[] = [
   { label: 'Trade' },
+  { label: 'Swap', group: 'swap' },
   { label: 'Gateway', group: 'gateway' },
   { label: 'Earn', group: 'earn' },
   { label: 'Vaults', group: 'earn' },
@@ -61,20 +62,19 @@ export default function Navbar({ activeTab, onTabChange }: Props) {
           const isActive = activeTab === item.label
           const isEarnGroup = item.group === 'earn'
           const isGateway = item.group === 'gateway'
+          const isSwap = item.group === 'swap'
+          const activeColor = isGateway ? '#63cab7' : isSwap ? '#a78bfa' : 'var(--accent)'
+          const inactiveColor = isGateway ? '#63cab7cc' : isSwap ? '#a78bfaaa' : isEarnGroup ? 'var(--ink-2)' : 'var(--muted)'
+          const activeBg = isGateway ? 'rgba(99,202,183,0.12)' : isSwap ? 'rgba(167,139,250,0.12)' : 'rgba(59,130,246,0.12)'
+          const hoverBg = isGateway ? 'rgba(99,202,183,0.08)' : isSwap ? 'rgba(167,139,250,0.08)' : 'rgba(255,255,255,0.04)'
           return (
             <button
               key={item.label}
               onClick={() => onTabChange(item.label)}
               style={{
-                background: isActive ? (isGateway ? 'rgba(99,202,183,0.12)' : 'rgba(59,130,246,0.12)') : 'none',
+                background: isActive ? activeBg : 'none',
                 border: 'none',
-                color: isActive
-                  ? (isGateway ? '#63cab7' : 'var(--accent)')
-                  : isGateway
-                  ? '#63cab7cc'
-                  : isEarnGroup
-                  ? 'var(--ink-2)'
-                  : 'var(--muted)',
+                color: isActive ? activeColor : inactiveColor,
                 fontSize: 13,
                 fontWeight: isActive ? 600 : 500,
                 padding: '6px 12px',
@@ -87,13 +87,13 @@ export default function Navbar({ activeTab, onTabChange }: Props) {
               }}
               onMouseEnter={e => {
                 if (!isActive) {
-                  e.currentTarget.style.color = isGateway ? '#63cab7' : 'var(--ink)'
-                  e.currentTarget.style.background = isGateway ? 'rgba(99,202,183,0.08)' : 'rgba(255,255,255,0.04)'
+                  e.currentTarget.style.color = activeColor
+                  e.currentTarget.style.background = hoverBg
                 }
               }}
               onMouseLeave={e => {
                 if (!isActive) {
-                  e.currentTarget.style.color = isGateway ? '#63cab7cc' : isEarnGroup ? 'var(--ink-2)' : 'var(--muted)'
+                  e.currentTarget.style.color = inactiveColor
                   e.currentTarget.style.background = 'none'
                 }
               }}

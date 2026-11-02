@@ -11,6 +11,7 @@ import EarnPage from './components/EarnPage'
 import VaultsPage from './components/VaultsPage'
 import StakingPage from './components/StakingPage'
 import GatewayPage from './components/GatewayPage'
+import SwapPage from './components/SwapPage'
 import MarketsPage from './components/MarketsPage'
 import PortfolioPage from './components/PortfolioPage'
 import LeaderboardPage from './components/LeaderboardPage'
@@ -74,6 +75,7 @@ export default function App() {
         </>
       )}
 
+      {activeTab === 'Swap' && <SwapPage />}
       {activeTab === 'Gateway' && <GatewayPage />}
       {activeTab === 'Earn' && <EarnPage />}
       {activeTab === 'Vaults' && <VaultsPage />}
