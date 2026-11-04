@@ -54,7 +54,7 @@ export default function App() {
               <div style={{ flex: 1, overflow: 'hidden', minHeight: 0 }}>
                 <TradingChart candles={candles} />
               </div>
-              <BottomPanel trades={trades} market={activeMarket} />
+              <BottomPanel trades={trades} market={activeMarket} markets={markets} />
             </div>
 
             <OrderForm

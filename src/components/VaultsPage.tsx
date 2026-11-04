@@ -161,6 +161,7 @@ export default function VaultsPage() {
   if (isConfirmed && txHash && depositVault) {
     const explorerUrl = buildTxExplorerUrl(ARC_TESTNET_ID, txHash)
     toast.success(`Deposited ${depositAmount} USDC into ${depositVault.name}`, {
+      id: txHash,
       description: (
         <a href={explorerUrl} target="_blank" rel="noopener noreferrer"
           style={{ color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: 4 }}>

@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { recordPosition, recordOrder, type Side } from '@/tradingStore'
 import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt, useSwitchChain } from 'wagmi'
 import { erc20Abi } from 'viem'
 import { ConnectKitButton } from 'connectkit'
@@ -58,14 +59,40 @@ export default function OrderForm({ market, price, onPriceChange }: Props) {
   const { writeContract, data: txHash, isPending: isSubmitting } = useWriteContract()
   const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({ hash: txHash })
 
-  // Show explorer link once confirmed
-  if (isConfirmed && txHash) {
-    const explorerUrl = buildTxExplorerUrl(ARC_TESTNET_ID, txHash)
+  // Snapshot of the order at submit time, so edits made while the tx confirms can't change what is recorded.
+  const pendingRef = useRef<{
+    side: Side; orderType: string; leverage: number; margin: number; price: number
+    market: string; baseAsset: string
+  } | null>(null)
+  const handledRef = useRef<string | null>(null)
+
+  // Runs once per confirmed tx hash: record the trade and show a single toast.
+  useEffect(() => {
+    if (!isConfirmed || !txHash || !address) return
+    if (handledRef.current === txHash) return
+    handledRef.current = txHash
+    const p = pendingRef.current
+    if (!p) return
+    pendingRef.current = null
+
+    if (p.orderType === 'Market') {
+      recordPosition(address, {
+        id: txHash, market: p.market, baseAsset: p.baseAsset, side: p.side, leverage: p.leverage,
+        margin: p.margin, entryPrice: p.price, sizeBase: (p.margin * p.leverage) / p.price,
+        openedAt: Date.now(), txHash,
+      })
+    } else {
+      recordOrder(address, {
+        id: txHash, market: p.market, baseAsset: p.baseAsset, side: p.side, orderType: p.orderType,
+        leverage: p.leverage, margin: p.margin, limitPrice: p.price, createdAt: Date.now(), txHash,
+      })
+    }
     toast.success(
-      `${side === 'buy' ? 'Long' : 'Short'} ${market.symbol} — ${leverage}x · $${sizeUsdNum.toFixed(2)} margin`,
+      `${p.orderType === 'Market' ? 'Opened' : 'Placed'} ${p.side === 'long' ? 'Long' : 'Short'} ${p.market} — ${p.leverage}x · $${p.margin.toFixed(2)} margin`,
       {
+        id: txHash,
         description: (
-          <a href={explorerUrl} target="_blank" rel="noopener noreferrer"
+          <a href={buildTxExplorerUrl(ARC_TESTNET_ID, txHash)} target="_blank" rel="noopener noreferrer"
             style={{ color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: 4 }}>
             View on Arc Explorer <ExternalLink size={12} />
           </a>
@@ -74,7 +101,7 @@ export default function OrderForm({ market, price, onPriceChange }: Props) {
       }
     )
     void refetchBalance()
-  }
+  }, [isConfirmed, txHash, address, refetchBalance])
 
   const handleSubmit = () => {
     if (!isConnected) return
@@ -85,6 +112,12 @@ export default function OrderForm({ market, price, onPriceChange }: Props) {
       const decimals = usdcDecimalsFor(ARC_TESTNET_ID)
       const rawAmt = parseAmountSafe(sizeUsd, decimals)
       if (rawBalance != null) assertSufficientBalance(rawAmt, rawBalance, 'USDC')
+      const execPrice = orderType === 'Market' ? market.markPrice : parseFloat(limitPrice)
+      if (!Number.isFinite(execPrice) || execPrice <= 0) throw new Error('Enter a valid price')
+      pendingRef.current = {
+        side: side === 'buy' ? 'long' : 'short', orderType, leverage, margin: sizeUsdNum,
+        price: execPrice, market: market.symbol, baseAsset: market.baseAsset,
+      }
       writeContract({
         address: usdcFact.address as `0x${string}`,
         abi: erc20Abi,

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt, useSwitchChain } from 'wagmi'
 import { erc20Abi } from 'viem'
 import { ConnectKitButton } from 'connectkit'
@@ -70,11 +70,18 @@ export default function StakingPage() {
   const { writeContract, data: txHash, isPending: isSubmitting } = useWriteContract()
   const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({ hash: txHash })
 
-  if (isConfirmed && txHash && selected) {
-    const explorerUrl = buildTxExplorerUrl(ARC_TESTNET_ID, txHash)
-    toast.success(`Delegated ${stakeAmount} USDC to ${selected}`, {
+  // Fires once per confirmed tx hash (not on every re-render).
+  const pendingStake = useRef<{ amount: string; validator: string } | null>(null)
+  const handledTx = useRef<string | null>(null)
+  useEffect(() => {
+    if (!isConfirmed || !txHash || handledTx.current === txHash) return
+    handledTx.current = txHash
+    const p = pendingStake.current
+    pendingStake.current = null
+    toast.success(p ? `Delegated ${p.amount} USDC to ${p.validator}` : 'Delegation confirmed', {
+      id: txHash,
       description: (
-        <a href={explorerUrl} target="_blank" rel="noopener noreferrer"
+        <a href={buildTxExplorerUrl(ARC_TESTNET_ID, txHash)} target="_blank" rel="noopener noreferrer"
           style={{ color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: 4 }}>
           View on Arc Explorer <ExternalLink size={12} />
         </a>
@@ -82,7 +89,7 @@ export default function StakingPage() {
       duration: 8000,
     })
     void refetchBalance()
-  }
+  }, [isConfirmed, txHash, refetchBalance])
 
   const filtered = VALIDATORS
     .filter(v => v.name.toLowerCase().includes(search.toLowerCase()) || v.description.toLowerCase().includes(search.toLowerCase()))
@@ -102,6 +109,7 @@ export default function StakingPage() {
       const decimals = usdcDecimalsFor(ARC_TESTNET_ID)
       const rawAmt = parseAmountSafe(stakeAmount, decimals)
       if (rawBalance != null) assertSufficientBalance(rawAmt, rawBalance, 'USDC')
+      pendingStake.current = { amount: stakeAmount, validator: selected }
       writeContract({
         address: usdcFact.address as `0x${string}`,
         abi: erc20Abi,

@@ -141,7 +141,8 @@ export default function EarnPage() {
 
   // Close modal + reset on success
   if (isSuccess && modal) {
-    toast.success(`${modal.action} ${amount} USDC confirmed on Arc Testnet`, {
+    toast.success(`${modal.action} ${amount} ${modal.asset} confirmed on Arc Testnet`, {
+      id: txHash,
       description: txHash ? (
         <a
           href={buildTxExplorerUrl(ARC_TESTNET_ID, txHash)}
