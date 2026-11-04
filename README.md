@@ -61,7 +61,7 @@ bun run check
 - Recent trades feed with buy/sell color coding
 - Order form: market/limit/stop orders, 1x–50x leverage, TP/SL, balance-aware size input
 - Market selector modal with search across all perpetual pairs
-- Positions, open orders, and portfolio bottom panel (wallet-gated)
+- Positions (live PnL, close), open orders (cancel, limit orders fill at their price), your trade history, estimated funding, and an account summary in the bottom panel (wallet-gated; kept per wallet in your browser)
 - Arc Testnet USDC balance reading via wagmi when wallet is connected
 
 **Earn (Lending):**
