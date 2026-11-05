@@ -64,6 +64,14 @@ bun run check
 - Positions (live PnL, close), open orders (cancel, limit orders fill at their price), your trade history, estimated funding, and an account summary in the bottom panel (wallet-gated; kept per wallet in your browser)
 - Arc Testnet USDC balance reading via wagmi when wallet is connected
 
+**Swap:**
+- Swap between USDC, EURC and cirBTC on Arc Testnet with a quote before you confirm
+
+**Bridge (Circle CCTP):**
+- Bring test USDC onto Arc Testnet from Solana Devnet (Phantom) or Monad Testnet (any EVM wallet)
+- Quote first, then bridge; Circle completes the final step on Arc, so no Arc gas is needed up front
+- Sui is a guided walkthrough linking Circle's Sui to Arc guide (Sui uses an older CCTP version that the bridge form does not cover)
+
 **Earn (Lending):**
 - Supply USDC, BTC, ETH, HYPE to earn lending yield
 - Borrow USDC/USDT against collateral with LTV-based liquidation

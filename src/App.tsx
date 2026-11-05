@@ -12,6 +12,7 @@ import VaultsPage from './components/VaultsPage'
 import StakingPage from './components/StakingPage'
 import GatewayPage from './components/GatewayPage'
 import SwapPage from './components/SwapPage'
+import BridgePage from './components/BridgePage'
 import MarketsPage from './components/MarketsPage'
 import PortfolioPage from './components/PortfolioPage'
 import LeaderboardPage from './components/LeaderboardPage'
@@ -75,6 +76,7 @@ export default function App() {
         </>
       )}
 
+      {activeTab === 'Bridge' && <BridgePage />}
       {activeTab === 'Swap' && <SwapPage />}
       {activeTab === 'Gateway' && <GatewayPage />}
       {activeTab === 'Earn' && <EarnPage />}
