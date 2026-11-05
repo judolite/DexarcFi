@@ -86,3 +86,9 @@ body {
 }
 .pulse-green { animation: pulse-green 0.5s ease-out; }
 .pulse-red { animation: pulse-red 0.5s ease-out; }
+
+/* Navbar tab row: scrolls sideways when the window is too narrow for every tab */
+.nav-scroll { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.18) transparent; }
+.nav-scroll::-webkit-scrollbar { height: 4px; }
+.nav-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.18); border-radius: 4px; }
+.nav-scroll::-webkit-scrollbar-track { background: transparent; }

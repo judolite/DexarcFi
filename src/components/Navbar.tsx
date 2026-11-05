@@ -59,7 +59,7 @@ export default function Navbar({ activeTab, onTabChange }: Props) {
       </div>
 
       {/* Nav links */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1 }}>
+      <div className="nav-scroll" style={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1, minWidth: 0, overflowX: 'auto' }}>
         {NAV_ITEMS.map((item) => {
           const isActive = activeTab === item.label
           const isEarnGroup = item.group === 'earn'
@@ -79,7 +79,9 @@ export default function Navbar({ activeTab, onTabChange }: Props) {
                 color: isActive ? activeColor : inactiveColor,
                 fontSize: 13,
                 fontWeight: isActive ? 600 : 500,
-                padding: '6px 12px',
+                padding: '6px 10px',
+                whiteSpace: 'nowrap' as const,
+                flexShrink: 0,
                 borderRadius: 6,
                 cursor: 'pointer',
                 fontFamily: 'DM Sans, sans-serif',
@@ -107,7 +109,7 @@ export default function Navbar({ activeTab, onTabChange }: Props) {
       </div>
 
       {/* Right side */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0, marginLeft: 8 }}>
         <div
           style={{
             display: 'flex',
