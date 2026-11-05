@@ -64,6 +64,9 @@ bun run check
 - Positions (live PnL, close), open orders (cancel, limit orders fill at their price), your trade history, estimated funding, and an account summary in the bottom panel (wallet-gated; kept per wallet in your browser)
 - Arc Testnet USDC balance reading via wagmi when wallet is connected
 
+**About:**
+- A page explaining what DexArcFi is, why it runs on Arc, the main features (each links to its tab), and what to know about the testnet preview
+
 **Swap:**
 - Swap between USDC, EURC and cirBTC on Arc Testnet with a quote before you confirm
 

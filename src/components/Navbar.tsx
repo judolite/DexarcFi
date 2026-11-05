@@ -1,7 +1,7 @@
 import { ConnectKitButton } from 'connectkit'
 import { BarChart2, Zap } from 'lucide-react'
 
-export type NavTab = 'Trade' | 'Swap' | 'Bridge' | 'Gateway' | 'Earn' | 'Vaults' | 'Staking' | 'Portfolio' | 'Markets' | 'Leaderboard'
+export type NavTab = 'Trade' | 'Swap' | 'Bridge' | 'Gateway' | 'Earn' | 'Vaults' | 'Staking' | 'Portfolio' | 'Markets' | 'Leaderboard' | 'About'
 
 const NAV_ITEMS: { label: NavTab; group?: 'earn' | 'gateway' | 'swap' }[] = [
   { label: 'Trade' },
@@ -14,6 +14,7 @@ const NAV_ITEMS: { label: NavTab; group?: 'earn' | 'gateway' | 'swap' }[] = [
   { label: 'Portfolio' },
   { label: 'Markets' },
   { label: 'Leaderboard' },
+  { label: 'About' },
 ]
 
 interface Props {
