@@ -10,9 +10,10 @@ import { toast } from 'sonner'
 import { ArrowRight, ExternalLink, RefreshCw, Wallet } from 'lucide-react'
 import { getUsdc } from '@/onchain-facts'
 import { parseAmountSafe, validateRecipient } from '@/security'
-import { MAX_BRIDGE_USDC, SOLANA_QUICKSTART_URL, getInjectedSolana, shortError, switchWalletChain, withAddress } from '@/bridgeHelpers'
+import { HyperEVMTestnet } from '@circle-fin/app-kit/chains'
+import { MAX_BRIDGE_USDC, SOLANA_QUICKSTART_URL, getInjectedSolana, shortError, switchWalletChain, withAddress, type AddChainParams } from '@/bridgeHelpers'
 import {
-  AMBER, ARC_TESTNET_ID, CHAINS, MONAD_TESTNET_ID, STEP_LABEL, routeKey,
+  AMBER, ARC_TESTNET_ID, CHAINS, HYPEREVM_TESTNET_ID, MONAD_TESTNET_ID, STEP_LABEL, routeKey,
   type Chain, type Direction, type Outcome, type Quote,
 } from '@/bridgeConfig'
 
@@ -37,7 +38,15 @@ function Row({ k, v }: { k: string; v: string }) {
   )
 }
 
-export default function BridgeForm({ dir, chain }: { dir: Direction; chain: Exclude<Chain, 'sui'> }) {
+// HyperEVM is not in the app's chain registry, so its add-to-wallet details come from Circle's kit definition.
+const HYPEREVM_ADD_CHAIN: AddChainParams = {
+  name: HyperEVMTestnet.name,
+  nativeCurrency: { ...HyperEVMTestnet.nativeCurrency },
+  rpcUrls: [...HyperEVMTestnet.rpcEndpoints],
+  explorerBase: HyperEVMTestnet.explorerUrl.replace('/tx/{hash}', ''),
+}
+
+export default function BridgeForm({ dir, chain }: { dir: Direction; chain: Chain }) {
   const { address, isConnected, connector } = useAccount()
   const [amount, setAmount] = useState('')
   const [recipientInput, setRecipientInput] = useState('')
@@ -108,9 +117,15 @@ export default function BridgeForm({ dir, chain }: { dir: Direction; chain: Excl
       }
       if (!connector) throw new Error('Wallet not connected')
       const provider = (await connector.getProvider()) as EIP1193Provider
+      const config = { transferSpeed: 'SLOW' as const }
+      if (chain === 'hyperliquid') {
+        await switchWalletChain(provider, HYPEREVM_TESTNET_ID, HYPEREVM_ADD_CHAIN)
+        const adapter = await createViemAdapterFromProvider({ provider })
+        return { from: { adapter, chain: 'HyperEVM_Testnet' as const }, to: dest, config }
+      }
       await switchWalletChain(provider, MONAD_TESTNET_ID)
       const adapter = await createViemAdapterFromProvider({ provider })
-      return { from: { adapter, chain: 'Monad_Testnet' as const }, to: dest, config: { transferSpeed: 'SLOW' as const } }
+      return { from: { adapter, chain: 'Monad_Testnet' as const }, to: dest, config }
     }
     // Out of Arc: sign on Arc with the EVM wallet, Circle's forwarder delivers on the destination.
     if (!connector) throw new Error('Wallet not connected')
@@ -120,6 +135,7 @@ export default function BridgeForm({ dir, chain }: { dir: Direction; chain: Excl
     const src = { adapter, chain: 'Arc_Testnet' as const }
     const config = { transferSpeed: 'SLOW' as const }
     if (chain === 'solana') return { from: src, to: { chain: 'Solana_Devnet' as const, recipientAddress: rcpt, useForwarder: true as const }, config }
+    if (chain === 'hyperliquid') return { from: src, to: { chain: 'HyperEVM_Testnet' as const, recipientAddress: rcpt, useForwarder: true as const }, config }
     return { from: src, to: { chain: 'Monad_Testnet' as const, recipientAddress: rcpt, useForwarder: true as const }, config }
   }
 
@@ -220,7 +236,7 @@ export default function BridgeForm({ dir, chain }: { dir: Direction; chain: Excl
         </button>
       ) : (
         <button onClick={() => { void bridge() }} disabled={busy !== null} style={cta(busy === null)}>
-          {busy === 'bridge' ? <><RefreshCw size={14} style={{ animation: 'spin 1s linear infinite' }} /> Bridging… confirm in your wallet</> : `Bridge ${quote.amount} USDC to ${chain === 'solana' && dir === 'out' ? 'Solana' : dir === 'out' ? 'Monad' : 'Arc'}`}
+          {busy === 'bridge' ? <><RefreshCw size={14} style={{ animation: 'spin 1s linear infinite' }} /> Bridging… confirm in your wallet</> : `Bridge ${quote.amount} USDC to ${dir === 'out' ? meta.name : 'Arc'}`}
         </button>
       )}
 

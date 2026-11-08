@@ -1,9 +1,10 @@
-export type Chain = 'solana' | 'monad' | 'sui'
+export type Chain = 'solana' | 'monad' | 'hyperliquid'
 export type Direction = 'in' | 'out'
 
 export const AMBER = '#f59e0b'
 export const ARC_TESTNET_ID = 5042002
 export const MONAD_TESTNET_ID = 10143
+export const HYPEREVM_TESTNET_ID = 998
 
 export interface ChainMeta {
   id: Chain
@@ -18,7 +19,7 @@ export interface ChainMeta {
 export const CHAINS: ChainMeta[] = [
   { id: 'solana', name: 'Solana', label: 'Solana Devnet', badge: 'CCTP V2', speedIn: 'Fast transfer in', nativeGas: 'devnet SOL' },
   { id: 'monad', name: 'Monad', label: 'Monad Testnet', badge: 'CCTP V2', speedIn: 'Standard transfer in', nativeGas: 'MON' },
-  { id: 'sui', name: 'Sui', label: 'Sui Testnet', badge: 'CCTP V1', speedIn: 'Standard transfer in', nativeGas: 'SUI' },
+  { id: 'hyperliquid', name: 'Hyperliquid', label: 'HyperEVM Testnet', badge: 'CCTP V2', speedIn: 'Standard transfer in', nativeGas: 'HYPE' },
 ]
 
 export interface Quote {

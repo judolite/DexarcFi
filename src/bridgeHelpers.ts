@@ -15,20 +15,39 @@ function isUnrecognizedChain(error: unknown): boolean {
  * Needed because the app's wagmi config only knows Arc, so wagmi's own
  * switchChain cannot move the wallet to Monad or other source chains.
  */
-export async function switchWalletChain(provider: EIP1193Provider, chainId: number): Promise<void> {
+export interface AddChainParams {
+  name: string
+  nativeCurrency: { name: string; symbol: string; decimals: number }
+  rpcUrls: string[]
+  explorerBase?: string
+}
+
+/**
+ * `fallback` supplies the add-chain details for a chain that is not in the
+ * @/onchain-facts registry (for example HyperEVM, taken from Circle's kit).
+ */
+export async function switchWalletChain(provider: EIP1193Provider, chainId: number, fallback?: AddChainParams): Promise<void> {
   const send = provider.request.bind(provider) as (args: { method: string; params?: unknown }) => Promise<unknown>
   try {
     await send({ method: 'wallet_switchEthereumChain', params: [{ chainId: numberToHex(chainId) }] })
   } catch (error) {
     if (!isUnrecognizedChain(error)) throw error
-    const chain = requireChain(chainId)
+    const chain = fallback ?? (() => {
+      const c = requireChain(chainId)
+      return {
+        name: c.name,
+        nativeCurrency: { name: c.nativeCurrency.symbol, symbol: c.nativeCurrency.symbol, decimals: c.nativeCurrency.decimals },
+        rpcUrls: [...c.rpcUrls],
+        explorerBase: c.explorerBase,
+      } satisfies AddChainParams
+    })()
     await send({
       method: 'wallet_addEthereumChain',
       params: [{
         chainId: numberToHex(chainId),
         chainName: chain.name,
-        nativeCurrency: { name: chain.nativeCurrency.symbol, symbol: chain.nativeCurrency.symbol, decimals: chain.nativeCurrency.decimals },
-        rpcUrls: [...chain.rpcUrls],
+        nativeCurrency: chain.nativeCurrency,
+        rpcUrls: chain.rpcUrls,
         blockExplorerUrls: chain.explorerBase ? [chain.explorerBase] : undefined,
       }],
     })
@@ -66,7 +85,8 @@ export function withAddress(wallet: PublicKeyProvider): SolanaProvider {
 /* ── Shared ───────────────────────────────────────────────────────────────── */
 
 export const CIRCLE_FAUCET_URL = 'https://faucet.circle.com'
-export const SUI_QUICKSTART_URL = 'https://developers.circle.com/cctp/quickstarts/transfer-usdc-sui-arc'
+export const HYPERCORE_DEPOSIT_URL = 'https://developers.circle.com/cctp/howtos/transfer-usdc-from-hyperevm-to-hypercore'
+export const HYPERCORE_WITHDRAW_URL = 'https://developers.circle.com/cctp/howtos/withdraw-usdc-from-hypercore-to-hyperevm'
 export const SOLANA_QUICKSTART_URL = 'https://developers.circle.com/cctp/quickstarts/transfer-usdc-solana-to-arc'
 
 /** Largest amount accepted from the UI in one bridge (testnet guard). */

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { ArrowDownToLine, ArrowUpFromLine, ExternalLink, Info, ShieldAlert } from 'lucide-react'
-import { CIRCLE_FAUCET_URL, SUI_QUICKSTART_URL } from '@/bridgeHelpers'
+import { CIRCLE_FAUCET_URL, HYPERCORE_DEPOSIT_URL, HYPERCORE_WITHDRAW_URL } from '@/bridgeHelpers'
 import { AMBER, CHAINS, type Chain, type Direction } from '@/bridgeConfig'
 import BridgeForm from './BridgeForm'
 
@@ -21,7 +21,7 @@ export default function BridgePage() {
           {dir === 'in' ? 'Bridge to Arc' : 'Bridge from Arc'}
         </h1>
         <p style={{ fontSize: 14, color: 'var(--muted)', margin: '0 0 20px', lineHeight: 1.6 }}>
-          Move USDC between Arc and Solana, Monad or Sui with Circle CCTP, in either direction. Circle submits the final step on the destination for you, so you do not need destination gas first.
+          Move USDC between Arc and Solana, Monad or Hyperliquid with Circle CCTP, in either direction. Circle submits the final step on the destination for you, so you do not need destination gas first.
         </p>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 12px', background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.2)', borderRadius: 9, marginBottom: 18 }}>
@@ -55,35 +55,23 @@ export default function BridgePage() {
           ))}
         </div>
 
-        {chain === 'sui' ? (
-          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 24 }}>
-            <h3 style={{ margin: '0 0 6px', fontSize: 16, color: 'var(--ink)' }}>{dir === 'in' ? 'Sui to Arc' : 'Arc to Sui'}</h3>
-            <p style={{ fontSize: 13, color: 'var(--muted)', lineHeight: 1.6, margin: '0 0 14px' }}>
-              Sui uses the older CCTP V1 protocol, standard transfers only, and the Forwarding Service is not available. Circle's kits do not cover Sui, so this route needs a Sui wallet and Circle's Move packages instead of this form.
+        <BridgeForm key={`${dir}:${chain}`} dir={dir} chain={chain} />
+
+        {chain === 'hyperliquid' && (
+          <div style={{ marginTop: 14, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '16px 18px' }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--ink)', marginBottom: 6 }}>
+              {dir === 'in' ? 'Using it on Hyperliquid trading' : 'Before you bridge out of Hyperliquid'}
+            </div>
+            <p style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.6, margin: '0 0 10px' }}>
+              {dir === 'in'
+                ? 'This route moves USDC on HyperEVM, Hyperliquid\'s EVM layer. Hyperliquid trading balances live on HyperCore, so after bridging you move the USDC from HyperEVM to HyperCore with Circle\'s CCTP deposit steps.'
+                : 'This route sends USDC held on HyperEVM, Hyperliquid\'s EVM layer. If your funds are in a Hyperliquid trading balance on HyperCore, withdraw them to HyperEVM first with Circle\'s CCTP withdrawal steps, then bridge here.'}
             </p>
-            <ol style={{ fontSize: 13, color: 'var(--ink-2)', lineHeight: 1.9, margin: '0 0 16px', paddingLeft: 20 }}>
-              {dir === 'in' ? (
-                <>
-                  <li>Get Sui Testnet SUI and test USDC.</li>
-                  <li>Burn USDC on Sui with the CCTP package.</li>
-                  <li>Fetch Circle's attestation for the burn.</li>
-                  <li>Mint on Arc Testnet by calling the message transmitter with the attestation (you pay Arc gas in USDC).</li>
-                </>
-              ) : (
-                <>
-                  <li>Burn USDC on Arc Testnet by calling the token messenger, with your Sui address as the recipient.</li>
-                  <li>Fetch Circle's attestation for the burn.</li>
-                  <li>Mint on Sui with the CCTP package (you pay Sui gas).</li>
-                </>
-              )}
-            </ol>
-            <a href={SUI_QUICKSTART_URL} target="_blank" rel="noopener noreferrer"
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: AMBER, color: '#0b1320', padding: '10px 18px', borderRadius: 9, fontSize: 13, fontWeight: 700 }}>
-              Open Circle's Sui and Arc guide <ExternalLink size={13} />
+            <a href={dir === 'in' ? HYPERCORE_DEPOSIT_URL : HYPERCORE_WITHDRAW_URL} target="_blank" rel="noopener noreferrer"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: AMBER, fontSize: 12, fontWeight: 700 }}>
+              {dir === 'in' ? 'HyperEVM to HyperCore guide' : 'HyperCore to HyperEVM guide'} <ExternalLink size={12} />
             </a>
           </div>
-        ) : (
-          <BridgeForm key={`${dir}:${chain}`} dir={dir} chain={chain} />
         )}
 
         <div style={{ marginTop: 14, display: 'flex', gap: 8, alignItems: 'flex-start' }}>

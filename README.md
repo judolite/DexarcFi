@@ -71,9 +71,9 @@ bun run check
 - Swap between USDC, EURC and cirBTC on Arc Testnet with a quote before you confirm
 
 **Bridge (Circle CCTP):**
-- Two-way: bring test USDC onto Arc Testnet from Solana Devnet (Phantom) or Monad Testnet (any EVM wallet), or send it out of Arc to either
+- Two-way: bring test USDC onto Arc Testnet from Solana Devnet (Phantom), Monad Testnet or HyperEVM Testnet (any EVM wallet), or send it out of Arc to any of them
 - Quote first, then bridge; Circle completes the final step on the destination, so no destination gas is needed up front
-- Sui is a guided walkthrough in both directions linking Circle's Sui and Arc guide (Sui uses an older CCTP version that the bridge form does not cover)
+- Hyperliquid works through HyperEVM Testnet in both directions; moving USDC between HyperEVM and Hyperliquid's trading balance (HyperCore) is a separate step, linked from the page
 
 **Earn (Lending):**
 - Supply USDC, BTC, ETH, HYPE to earn lending yield
