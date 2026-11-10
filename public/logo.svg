@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="190 110 1105 885" role="img" aria-label="DexArcFi logo">
+  <defs>
+    <linearGradient id="gold" x1="214" y1="0" x2="1282" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#b8861e"/>
+      <stop offset="0.45" stop-color="#dcb043"/>
+      <stop offset="0.8" stop-color="#f3d57f"/>
+      <stop offset="1" stop-color="#fdeab0"/>
+    </linearGradient>
+    <linearGradient id="shade" x1="0" y1="520" x2="0" y2="962" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#8a5a14" stop-opacity="0"/>
+      <stop offset="1" stop-color="#8a5a14" stop-opacity="0.85"/>
+    </linearGradient>
+    <linearGradient id="band" x1="322" y1="0" x2="933" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#c0902a"/>
+      <stop offset="1" stop-color="#e8c261"/>
+    </linearGradient>
+    <linearGradient id="col" x1="0" y1="553" x2="0" y2="853" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#d0a23a"/>
+      <stop offset="1" stop-color="#9a6a1c"/>
+    </linearGradient>
+    <linearGradient id="green" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#5ff0b4"/>
+      <stop offset="1" stop-color="#18a77a"/>
+    </linearGradient>
+    <radialGradient id="void" cx="0.5" cy="0.45" r="0.7">
+      <stop offset="0" stop-color="#34312b"/>
+      <stop offset="1" stop-color="#171b22"/>
+    </radialGradient>
+  </defs>
+
+  <!-- offset outline frame -->
+  <path d="M197 142h17v820h526v21H197z" fill="#fdf6e4" opacity="0.95"/>
+
+  <!-- the D -->
+  <path d="M214 121H1282C1275 190 1230 228 1130 230H1035C1130 310 1175 420 1175 545C1175 760 1000 962 745 962H214Z" fill="url(#gold)"/>
+  <path d="M214 121H1282C1275 190 1230 228 1130 230H1035C1130 310 1175 420 1175 545C1175 760 1000 962 745 962H214Z" fill="url(#shade)"/>
+
+  <!-- inner counter -->
+  <path d="M322 230H740C930 230 1050 380 1050 545C1050 720 920 853 745 853H322Z" fill="url(#void)"/>
+  <path d="M322 240H680" stroke="#fdf6e4" stroke-width="20" opacity="0.85" fill="none"/>
+
+  <!-- pediment base + roof -->
+  <path d="M322 445H520L684 230L849 445H933C925 520 880 560 830 572H322Z" fill="url(#band)"/>
+  <path d="M582 445L684 325L788 445Z" fill="#2c2a26"/>
+  <path d="M582 445L684 325" stroke="#e8d3a0" stroke-width="18" fill="none"/>
+
+  <!-- columns -->
+  <g fill="url(#col)">
+    <rect x="538" y="553" width="42" height="300"/>
+    <rect x="622" y="553" width="42" height="300"/>
+    <rect x="706" y="553" width="42" height="300"/>
+    <rect x="790" y="553" width="42" height="300"/>
+  </g>
+  <g fill="#f1e3bf" opacity="0.9">
+    <rect x="521" y="553" width="17" height="300"/>
+    <rect x="605" y="553" width="17" height="300"/>
+    <rect x="689" y="553" width="17" height="300"/>
+    <rect x="773" y="553" width="17" height="300"/>
+  </g>
+  <path d="M322 563H538" stroke="#f6ebd0" stroke-width="20" opacity="0.8" fill="none"/>
+
+  <!-- green bars -->
+  <g fill="url(#green)">
+    <rect x="340" y="769" width="36" height="84" rx="4"/>
+    <rect x="394" y="697" width="36" height="156" rx="4"/>
+    <rect x="448" y="613" width="36" height="240" rx="4"/>
+  </g>
+</svg>
