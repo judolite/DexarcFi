@@ -1,5 +1,6 @@
 import { ConnectKitButton } from 'connectkit'
 import { BarChart2 } from 'lucide-react'
+import logoUrl from '@/assets/logo.svg'
 
 export type NavTab = 'Trade' | 'Swap' | 'Bridge' | 'Gateway' | 'Earn' | 'Vaults' | 'Staking' | 'Portfolio' | 'Markets' | 'Leaderboard' | 'About'
 
@@ -54,7 +55,7 @@ export default function Navbar({ activeTab, onTabChange }: Props) {
           flexShrink: 0,
         }}
       >
-        <img src="/logo.svg" alt="" width={30} height={24} style={{ display: 'block', height: 24, width: 'auto' }} />
+        <img src={logoUrl} alt="" width={30} height={24} style={{ display: 'block', height: 24, width: 30, objectFit: 'contain' }} />
         DexArcFi
       </div>
 
