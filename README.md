@@ -68,7 +68,7 @@ bun run check
 - A page explaining what DexArcFi is, why it runs on Arc, the main features (each links to its tab), and what to know about the testnet preview
 
 **Swap:**
-- Swap between USDC, EURC and cirBTC on Arc Testnet with a quote before you confirm
+- Swap between USDC, EURC and cirBTC on Arc Testnet with a quote before you confirm, including the minimum you will receive; the swap fails rather than settle below it
 
 **Bridge (Circle CCTP):**
 - Two-way: bring test USDC onto Arc Testnet from Solana Devnet (Phantom), Monad Testnet or HyperEVM Testnet (any EVM wallet), or send it out of Arc to any of them

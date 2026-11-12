@@ -8,6 +8,7 @@ import { toast } from 'sonner'
 import { ArrowUpDown, RefreshCw, ExternalLink, Info, ChevronDown } from 'lucide-react'
 import { ARC_TESTNET_TOKENS, type TokenInfo } from '@/tokens'
 import { assertTestnetOnly, parseAmountSafe } from '@/security'
+import { minReceived } from '@/swapMath'
 
 // One AppKit instance for the whole page
 const appKit = new AppKit()
@@ -23,6 +24,11 @@ interface ReviewedSwap {
   tokenOut: string
   amountIn: string
   account: string
+  /** Slippage the quote was built with; the swap uses this, never a later value. */
+  slippageBps: number
+  /** Worst-case output enforced on the swap (smallest units of tokenOut). */
+  minRaw: bigint
+  minDisplay: string
 }
 
 function TokenBadge({ token, onClick }: { token: TokenInfo; onClick?: () => void }) {
@@ -153,7 +159,11 @@ export default function SwapPage() {
         amountIn,
         config: { slippageBps },
       })
-      setReviewed({ estimate, tokenIn: tokenIn.symbol, tokenOut: tokenOut.symbol, amountIn, account: address })
+      const min = minReceived(estimate.estimatedOutput.amount, tokenOut.decimals, slippageBps)
+      setReviewed({
+        estimate, tokenIn: tokenIn.symbol, tokenOut: tokenOut.symbol, amountIn, account: address,
+        slippageBps, minRaw: min.raw, minDisplay: min.display,
+      })
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to get quote'
       toast.error(msg.length > 120 ? msg.slice(0, 120) + '…' : msg)
@@ -178,7 +188,8 @@ export default function SwapPage() {
         tokenIn: reviewed.tokenIn,
         tokenOut: reviewed.tokenOut,
         amountIn: reviewed.amountIn,
-        config: { slippageBps },
+        // stopLimit makes the swap fail rather than settle below the "Minimum received" shown in the quote.
+        config: { slippageBps: reviewed.slippageBps, stopLimit: reviewed.minRaw.toString() },
       })
       setSwapResult({
         txHash: result.txHash,
@@ -297,6 +308,12 @@ export default function SwapPage() {
                   {reviewed.estimate.estimatedOutput.amount} {reviewed.estimate.estimatedOutput.token}
                 </span>
               </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                <span style={{ color: 'var(--subtle)' }}>Minimum received</span>
+                <span className="mono" style={{ color: 'var(--ink)', fontWeight: 600 }}>
+                  {reviewed.minDisplay} {reviewed.estimate.estimatedOutput.token}
+                </span>
+              </div>
               {reviewed.estimate.fees?.map((fee, i) => (
                 <div key={i} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
                   <span style={{ color: 'var(--subtle)', textTransform: 'capitalize' }}>{fee.type} fee</span>
@@ -305,14 +322,14 @@ export default function SwapPage() {
               ))}
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
                 <span style={{ color: 'var(--subtle)' }}>Slippage tolerance</span>
-                <span style={{ color: 'var(--muted)' }}>{(slippageBps / 100).toFixed(1)}%</span>
+                <span style={{ color: 'var(--muted)' }}>{(reviewed.slippageBps / 100).toFixed(1)}%</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span style={{ color: 'var(--subtle)' }}>Route</span>
                 <span style={{ color: 'var(--muted)', fontSize: 11 }}>Circle Swap Kit (Arc Testnet)</span>
               </div>
               <div style={{ marginTop: 8, padding: '6px 10px', background: `${purple}10`, borderRadius: 7, fontSize: 11, color: '#a78bfacc' }}>
-                Swap is routed through a third-party aggregator (LiFi or Circle) — rates may vary.
+                The swap fails instead of settling below Minimum received. It is routed through a third-party aggregator (LiFi or Circle), so rates may vary.
               </div>
             </div>
           )}
@@ -330,7 +347,7 @@ export default function SwapPage() {
                 {[100, 200, 300, 500].map(bps => (
                   <button
                     key={bps}
-                    onClick={() => setSlippageBps(bps)}
+                    onClick={() => { setSlippageBps(bps); setReviewed(null) }}
                     style={{
                       padding: '4px 10px', borderRadius: 6, fontSize: 12, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif',
                       background: slippageBps === bps ? `${purple}22` : 'var(--surface-strong)',
