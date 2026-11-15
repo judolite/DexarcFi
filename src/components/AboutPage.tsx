@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import {
   Activity, ArrowLeftRight, BarChart3, Coins, Globe, Landmark, Layers, Link2, Shield, Timer, Wallet, Zap, ChevronRight,
+  Bot,
 } from 'lucide-react'
 import type { NavTab } from './Navbar'
 
@@ -25,6 +26,7 @@ const HIGHLIGHTS: Highlight[] = [
   { tab: 'Earn', icon: <Coins size={ICON} />, title: 'Earn', body: 'Supply assets to earn yield from a lending market.' },
   { tab: 'Vaults', icon: <Landmark size={ICON} />, title: 'Vaults', body: 'Deposit into strategy vaults and compare return, drawdown and lock period before you commit.' },
   { tab: 'Staking', icon: <Layers size={ICON} />, title: 'Staking', body: 'Delegate to validators and compare uptime, commission and estimated APR.' },
+  { tab: 'Agent', icon: <Bot size={ICON} />, title: 'Risk Agent', body: 'Checks liquidation distance and flags dangerous leverage before you trade, suggests safer sizes and stops, and compares Earn, Vault and Staking yields for idle USDC. It only suggests and never moves your funds. Other apps and AI agents can call it over MCP, and premium analysis is paid per request with x402.' },
   { tab: 'Markets', icon: <BarChart3 size={ICON} />, title: 'Markets, Portfolio and Leaderboard', body: 'Live market prices, your balances and history, and trader rankings in one place.' },
 ]
 

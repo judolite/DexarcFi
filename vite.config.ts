@@ -37,5 +37,9 @@ export default defineConfig({
   server: {
     allowedHosts: true,
     cors: true,
+    // Local API (scripts/dev-api.ts). On Vercel the /api folder runs as functions.
+    proxy: {
+      '/api': { target: 'http://localhost:3001', changeOrigin: true },
+    },
   },
 })

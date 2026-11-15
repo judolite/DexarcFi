@@ -31,7 +31,12 @@ bun install
 
 ### Environment Variables
 
-None required for local development. The app reads from the pre-generated `src/onchain-facts.ts` module.
+None are required for local development. All of these are optional:
+
+- `VITE_PUBLIC_URL`: the public address of the deployed app, used in the Agent Card and MCP links. Defaults to `https://dexarcfi.vercel.app`.
+- `VITE_CONCORDIUM_BADGE`: the agent's Concordium token address once it is registered there. Without it the app shows "Not verified".
+- `X402_SELLER_ADDRESS`: server only. The wallet that receives payments for the paid agent tool. Without it the paid tool stays off.
+- `X402_FACILITATOR_URL`: server only. Defaults to Circle's Gateway testnet facilitator.
 
 ### Run
 
@@ -39,7 +44,7 @@ None required for local development. The app reads from the pre-generated `src/o
 bun run dev
 ```
 
-Open `http://localhost:5173`.
+Open `http://localhost:5173`. To also run the agent's MCP endpoint locally, start `bun run dev:api` in a second terminal; the dev server forwards `/api` to it.
 
 ### Build
 
@@ -66,6 +71,13 @@ bun run check
 
 **About:**
 - A page explaining what DexArcFi is, why it runs on Arc, the main features (each links to its tab), and what to know about the testnet preview
+
+**Risk Agent:**
+- Tracks your positions, open orders, trade history and PnL, plus the Earn, Vault and Staking deposits you made
+- Before you trade, shows the estimated liquidation price and distance, flags dangerous leverage (20x to 50x, with an acknowledgement required), and suggests a safer leverage, position size and stop level
+- Compares Earn, Vault and Staking yields for idle USDC and suggests a split across risk levels (suggestions only, it never moves funds)
+- Can be registered as an ERC-8004 agent on Arc Testnet from the Agent tab; shows "Not verified" for Concordium until you register it there
+- Other apps and AI agents can call it over MCP; the premium stress test is paid per request with x402 on Arc Testnet
 
 **Swap:**
 - Swap between USDC, EURC and cirBTC on Arc Testnet with a quote before you confirm, including the minimum you will receive; the swap fails rather than settle below it

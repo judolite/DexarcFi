@@ -2,7 +2,7 @@ import { ConnectKitButton } from 'connectkit'
 import { BarChart2 } from 'lucide-react'
 import logoUrl from '@/assets/logo.svg'
 
-export type NavTab = 'Trade' | 'Swap' | 'Bridge' | 'Gateway' | 'Earn' | 'Vaults' | 'Staking' | 'Portfolio' | 'Markets' | 'Leaderboard' | 'About'
+export type NavTab = 'Trade' | 'Swap' | 'Bridge' | 'Gateway' | 'Earn' | 'Vaults' | 'Staking' | 'Portfolio' | 'Markets' | 'Leaderboard' | 'Agent' | 'About'
 
 const NAV_ITEMS: { label: NavTab; group?: 'earn' | 'gateway' | 'swap' }[] = [
   { label: 'Trade' },
@@ -15,6 +15,7 @@ const NAV_ITEMS: { label: NavTab; group?: 'earn' | 'gateway' | 'swap' }[] = [
   { label: 'Portfolio' },
   { label: 'Markets' },
   { label: 'Leaderboard' },
+  { label: 'Agent', group: 'gateway' },
   { label: 'About' },
 ]
 

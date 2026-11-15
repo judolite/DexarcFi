@@ -14,6 +14,7 @@ import GatewayPage from './components/GatewayPage'
 import SwapPage from './components/SwapPage'
 import BridgePage from './components/BridgePage'
 import AboutPage from './components/AboutPage'
+import AgentPage from './components/AgentPage'
 import MarketsPage from './components/MarketsPage'
 import PortfolioPage from './components/PortfolioPage'
 import LeaderboardPage from './components/LeaderboardPage'
@@ -86,6 +87,7 @@ export default function App() {
       {activeTab === 'Portfolio' && <PortfolioPage />}
       {activeTab === 'Markets' && <MarketsPage />}
       {activeTab === 'Leaderboard' && <LeaderboardPage />}
+      {activeTab === 'Agent' && <AgentPage markets={markets} onNavigate={setActiveTab} />}
       {activeTab === 'About' && <AboutPage onNavigate={setActiveTab} />}
     </div>
   )

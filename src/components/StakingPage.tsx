@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
-import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt, useSwitchChain } from 'wagmi'
+import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt, useSwitchChain, useConfig } from 'wagmi'
+import { recordDepositOnConfirm } from '@/depositStore'
 import { erc20Abi } from 'viem'
 import { ConnectKitButton } from 'connectkit'
 import { ChevronRight, CheckCircle, AlertCircle, Search, ExternalLink } from 'lucide-react'
@@ -46,6 +47,7 @@ function formatStake(n: number): string {
 
 export default function StakingPage() {
   const { address, isConnected, chainId } = useAccount()
+  const wagmiConfig = useConfig()
   const { switchChain } = useSwitchChain()
   const [search, setSearch] = useState('')
   const [selected, setSelected] = useState<string | null>(null)
@@ -116,6 +118,10 @@ export default function StakingPage() {
         functionName: 'transfer',
         args: [STAKING_ESCROW, rawAmt],
         chainId: ARC_TESTNET_ID,
+      }, {
+        onSuccess: (hash) => {
+          if (address) recordDepositOnConfirm(wagmiConfig, address, hash, { kind: 'staking', name: selected, token: 'USDC', amount: Number(stakeAmount) })
+        },
       })
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Validation failed')

@@ -9,6 +9,8 @@ import { assertTestnetOnly, parseAmountSafe, assertSufficientBalance, ESCROW_ADD
 import type { Market } from '../hooks/useMarketData'
 import { Info, ExternalLink, ShieldAlert } from 'lucide-react'
 import { toast } from 'sonner'
+import RiskPanel from './RiskPanel'
+import { DANGEROUS_LEVERAGE } from '@/agent/riskMath'
 
 const ARC_TESTNET_ID = 5042002
 
@@ -35,6 +37,8 @@ export default function OrderForm({ market, price, onPriceChange }: Props) {
   const [tpsl, setTpsl] = useState(false)
   const [tpPrice, setTpPrice] = useState('')
   const [slPrice, setSlPrice] = useState('')
+  // Leverage the user has explicitly accepted as dangerous (20x or more).
+  const [ackedLeverage, setAckedLeverage] = useState<number | null>(null)
 
   const usdcFact = getUsdc(ARC_TESTNET_ID)
   const isWrongChain = isConnected && chainId !== ARC_TESTNET_ID
@@ -109,6 +113,9 @@ export default function OrderForm({ market, price, onPriceChange }: Props) {
     if (!usdcFact) { toast.error('USDC not found on Arc Testnet'); return }
     try {
       assertTestnetOnly(chainId)
+      if (leverage >= DANGEROUS_LEVERAGE && ackedLeverage !== leverage) {
+        throw new Error(`${leverage}x is dangerous leverage. Tick the risk acknowledgement, or lower the leverage.`)
+      }
       const decimals = usdcDecimalsFor(ARC_TESTNET_ID)
       const rawAmt = parseAmountSafe(sizeUsd, decimals)
       if (rawBalance != null) assertSufficientBalance(rawAmt, rawBalance, 'USDC')
@@ -433,6 +440,19 @@ export default function OrderForm({ market, price, onPriceChange }: Props) {
             </div>
           )}
         </div>
+
+        <RiskPanel
+          side={side === 'buy' ? 'long' : 'short'}
+          entryPrice={orderType === 'Market' ? price : (parseFloat(limitPrice) || price)}
+          leverage={leverage}
+          marginUsd={sizeUsdNum}
+          balanceUsd={parseFloat(balanceFormatted) || 0}
+          acknowledged={ackedLeverage === leverage}
+          onAcknowledge={() => setAckedLeverage(ackedLeverage === leverage ? null : leverage)}
+          onSetLeverage={setLeverage}
+          onSetMargin={(n) => setSizeUsd(String(n))}
+          onSetStops={(sl, tp) => { setTpsl(true); setSlPrice(sl.toFixed(2)); setTpPrice(tp.toFixed(2)) }}
+        />
 
         {/* Summary rows */}
         <div

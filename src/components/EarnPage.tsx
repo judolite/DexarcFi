@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt, useSwitchChain } from 'wagmi'
+import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt, useSwitchChain, useConfig } from 'wagmi'
+import { recordDepositOnConfirm } from '@/depositStore'
 import { erc20Abi } from 'viem'
 import { ConnectKitButton } from 'connectkit'
 import { TrendingUp, TrendingDown, Info, ChevronRight, ExternalLink, X } from 'lucide-react'
@@ -90,6 +91,7 @@ interface ModalState { action: ModalAction; asset: string }
 
 export default function EarnPage() {
   const { address, isConnected, chainId } = useAccount()
+  const wagmiConfig = useConfig()
   const { switchChain } = useSwitchChain()
   const [activeTab, setActiveTab] = useState<'supply' | 'borrow'>('supply')
   const [modal, setModal] = useState<ModalState | null>(null)
@@ -203,6 +205,10 @@ export default function EarnPage() {
         functionName: 'transfer',
         args: [dest, rawAmt],
         chainId: ARC_TESTNET_ID,
+      }, {
+        onSuccess: (hash) => {
+          if (address) recordDepositOnConfirm(wagmiConfig, address, hash, { kind: 'earn', name: `${modal.asset} supply`, token: modal.asset, amount: Number(amount) })
+        },
       })
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Validation failed')

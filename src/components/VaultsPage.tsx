@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt, useSwitchChain } from 'wagmi'
+import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt, useSwitchChain, useConfig } from 'wagmi'
+import { recordDepositOnConfirm } from '@/depositStore'
 import { erc20Abi } from 'viem'
 import { ConnectKitButton } from 'connectkit'
 import { TrendingUp, Users, Lock, ChevronRight, Shield, Zap, ExternalLink, X } from 'lucide-react'
@@ -135,6 +136,7 @@ function RiskTag({ label }: { label: string }) {
 
 export default function VaultsPage() {
   const { address, isConnected, chainId } = useAccount()
+  const wagmiConfig = useConfig()
   const { switchChain } = useSwitchChain()
   const [filter, setFilter] = useState<'all' | 'featured'>('all')
   const [depositVault, setDepositVault] = useState<Vault | null>(null)
@@ -200,6 +202,10 @@ export default function VaultsPage() {
         functionName: 'transfer',
         args: [vaultAddr, rawAmt],
         chainId: ARC_TESTNET_ID,
+      }, {
+        onSuccess: (hash) => {
+          if (address) recordDepositOnConfirm(wagmiConfig, address, hash, { kind: 'vault', name: depositVault.name, token: 'USDC', amount: Number(depositAmount) })
+        },
       })
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Validation failed')
