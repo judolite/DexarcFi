@@ -3,7 +3,7 @@
  * The Vite dev server proxies /api here. Run with: bun run dev:api
  */
 import { createServer } from 'node:http'
-import mcp from '../api/mcp'
+import mcp from '../server/mcp'
 
 const port = Number(process.env.API_PORT ?? 3001)
 

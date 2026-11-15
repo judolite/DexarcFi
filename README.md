@@ -44,7 +44,7 @@ None are required for local development. All of these are optional:
 bun run dev
 ```
 
-Open `http://localhost:5173`. To also run the agent's MCP endpoint locally, start `bun run dev:api` in a second terminal; the dev server forwards `/api` to it.
+Open `http://localhost:5173`. To also run the agent's MCP endpoint locally, start `bun run dev:api` in a second terminal; the dev server forwards `/api` to it. The deployed endpoint is the prebuilt `api/mcp.js`; after changing `server/mcp.ts` or `src/agent/`, regenerate it with `bun run build:api` and commit the result.
 
 ### Build
 
