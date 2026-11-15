@@ -4,13 +4,8 @@
   "installCommand": "npm install --legacy-peer-deps",
   "rewrites": [
     {
-      "source": "/((?!api/|\\.well-known/).*)",
+      "source": "/((?!api/).*)",
       "destination": "/index.html"
     }
-  ],
-  "functions": {
-    "api/*.ts": {
-      "maxDuration": 30
-    }
-  }
+  ]
 }
