@@ -76,7 +76,7 @@ bun run check
 - Tracks your positions, open orders, trade history and PnL, plus the Earn, Vault and Staking deposits you made
 - Before you trade, shows the estimated liquidation price and distance, flags dangerous leverage (20x to 50x, with an acknowledgement required), and suggests a safer leverage, position size and stop level
 - Compares Earn, Vault and Staking yields for idle USDC and suggests a split across risk levels (suggestions only, it never moves funds)
-- Can be registered as an ERC-8004 agent on Arc Testnet from the Agent tab; shows "Not verified" for Concordium until you register it there
+- Registered as an ERC-8004 agent on Arc Testnet (the Agent Card lists its registration); shows "Not verified" for Concordium until you register it there
 - Other apps and AI agents can call it over MCP; the premium stress test is paid per request with x402 on Arc Testnet
 
 **Swap:**

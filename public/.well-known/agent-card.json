@@ -4,11 +4,25 @@
   "description": "A risk and yield assistant for DeFi users on Arc. It estimates liquidation distance and flags dangerous leverage (20x to 50x) before a perp trade, suggests safer position sizes and stop levels, and compares Earn, Vault and Staking yields for idle USDC. It only suggests: it never trades or moves funds. Estimates, not financial advice. Free tools are open to any caller; premium_analysis costs $0.01 USDC per request via x402 on Arc Testnet.",
   "image": "https://dexarcfi.vercel.app/agent.svg",
   "services": [
-    { "name": "web", "endpoint": "https://dexarcfi.vercel.app/" },
-    { "name": "MCP", "endpoint": "https://dexarcfi.vercel.app/api/mcp", "version": "2025-06-18" }
+    {
+      "name": "web",
+      "endpoint": "https://dexarcfi.vercel.app/"
+    },
+    {
+      "name": "MCP",
+      "endpoint": "https://dexarcfi.vercel.app/api/mcp",
+      "version": "2025-06-18"
+    }
   ],
   "x402Support": true,
   "active": true,
-  "registrations": [],
-  "supportedTrust": ["reputation"]
+  "registrations": [
+    {
+      "agentId": 898200,
+      "agentRegistry": "eip155:5042002:0x8004A818BFB912233c491871b3d84c89A494BD9e"
+    }
+  ],
+  "supportedTrust": [
+    "reputation"
+  ]
 }
