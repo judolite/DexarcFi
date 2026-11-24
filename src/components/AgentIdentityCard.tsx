@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useAccount, useConfig, useReadContract, useSwitchChain, useWriteContract } from 'wagmi'
+import { useAccount, useConfig, useReadContract, useSwitchChain, useWriteContract, useDisconnect } from 'wagmi'
 import { waitForTransactionReceipt } from 'wagmi/actions'
 import { parseEventLogs } from 'viem'
 import { toast } from 'sonner'
@@ -48,6 +48,7 @@ export default function AgentIdentityCard() {
   const { address, isConnected, chainId } = useAccount()
   const config = useConfig()
   const { switchChain } = useSwitchChain()
+  const { disconnect } = useDisconnect()
   const { writeContract, isPending } = useWriteContract()
   const [reg, setReg] = useState<Registration | null>(loadRegistration)
   const [confirming, setConfirming] = useState(false)
@@ -81,7 +82,15 @@ export default function AgentIdentityCard() {
             .catch((e: unknown) => toast.error(e instanceof Error ? e.message : 'Registration failed'))
             .finally(() => setConfirming(false))
         },
-        onError: (e) => toast.error(e.message.split('\n')[0]),
+        onError: (e) => {
+          // EIP-1193 4100: the wallet has not authorized this site for the selected account/method.
+          if (/not been authorized|unauthorized|4100/i.test(e.message)) {
+            toast.error('Your wallet has not approved this site for the selected account. Reconnect and approve the request in your wallet.')
+            disconnect()
+            return
+          }
+          toast.error(e.message.split('\n')[0])
+        },
       },
     )
   }
